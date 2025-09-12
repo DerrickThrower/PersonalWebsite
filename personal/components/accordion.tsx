@@ -6,10 +6,10 @@ export function Accordion() {
         <div className="collapse collapse-arrow join-item border-base-300 border">
           <input type="radio" name="my-accordion-4" defaultChecked />
           <div className="collapse-title font-semibold">
-            Why do I love coding?
+            Whats 2 +2 
           </div>
           <div className="collapse-content text-sm">
-            I thought it was cool to mess with computers and such.
+            4
           </div>
         </div>
         <div className="collapse collapse-arrow join-item border-base-300 border">
@@ -18,16 +18,16 @@ export function Accordion() {
             What are your other hobbies?
           </div>
           <div className="collapse-content text-sm">
-            I'm a avid lifter and I love play sports like basketball!
+            I am a avid lifter and I love to play sports like basketball!
           </div>
         </div>
         <div className="collapse collapse-arrow join-item border-base-300 border">
           <input type="radio" name="my-accordion-4" />
           <div className="collapse-title font-semibold">
-            Why are you so cool?
+            
           </div>
           <div className="collapse-content text-sm">
-            I just be chilling tbh.
+            
           </div>
         </div>
       </div>

@@ -9,10 +9,8 @@ export const Feet = () => {
     <footer className="footer sm:footer-horizontal  text-base-content p-10 bg-inherit ">
         <nav>
     <h6 className="footer-title">Connect with me!</h6>
-    <a className="link link-hover">Linkedin</a>
-    <a className="link link-hover">GitHub</a>
-    <a className="link link-hover">Resume</a>
-    <a className="link link-hover">cool stuff</a>
+    <a href="https://www.linkedin.com/in/derrick-thrower-482855278/" className="link link-hover">Linkedin</a>
+    <a href="https://github.com/DerrickThrower" className="link link-hover">GitHub</a>
   </nav>
   <aside>
     <svg
@@ -23,7 +21,6 @@ export const Feet = () => {
       fillRule="evenodd"
       clipRule="evenodd"
       className="fill-current">
-      //put a picture here Pls
     </svg>
     <p>
       Made With Love 

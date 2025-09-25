@@ -15,7 +15,7 @@ function Introhero() {
             showBorder={false}
             className="text-3xl md:text-8=2xl lg:text-6xl font-bold "
           >
-            Hi! I'm Derrick Thrower
+            Hi! I&apos;m Derrick Thrower
           </GradientText>
           
           <div className="mt-1 text-lg text-gray-600 italic">

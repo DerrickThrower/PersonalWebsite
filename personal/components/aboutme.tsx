@@ -35,7 +35,7 @@ function AboutMe() {
             />
             <h3 className=" font-bold mb-2 text-4xl">What I Love</h3>
             <p className="text-white text-2xl">
-              I love building out any ideas that I can think of, Going to hackthathons, and building community wherever I go! 
+              I love building out any ideas that I can think of, Going to hackathons, and building community wherever I go! 
               
             </p>
           </div>

@@ -6,7 +6,7 @@ function AboutMe() {
     <div className="  relative bg-inherit ">
       <div className=" flex p-5 gap-5 m-5">
         <SpotlightCard
-          className="custom-spotlight-card"
+          className="custom-spotlight-card min-h-[320px] flex flex-col justify-end"
           spotlightColor="rgba(0, 100, 255, 0.2)"
         >
           <div className="flex flex-col items-center  text-center justify-center">
@@ -24,14 +24,14 @@ function AboutMe() {
         </SpotlightCard>
 
         <SpotlightCard
-          className="custom-spotlight-card"
+          className="custom-spotlight-card min-h-[320px] flex flex-col justify-end"
           spotlightColor="rgba(0, 100, 255, 0.2)"
         >
           <div className="flex flex-col items-center  text-center">
-            <img
+            <img 
               src="/DerrickFlexing.jpeg"
               alt="Me flexing"
-              className="w-40  mb-4"
+              className="w-40  mb-4 rounded"
             />
             <h3 className=" font-bold mb-2 text-4xl">What I Love</h3>
             <p className="text-white text-2xl">

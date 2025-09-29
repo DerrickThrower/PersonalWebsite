@@ -6,7 +6,7 @@ export function Accordion() {
         <div className="collapse collapse-arrow join-item border-base-300 border">
           <input type="radio" name="my-accordion-4" defaultChecked />
           <div className="collapse-title font-semibold">
-            Whats 2 +2 
+            Whats 2 + 2 
           </div>
           <div className="collapse-content text-sm">
             4
@@ -24,10 +24,10 @@ export function Accordion() {
         <div className="collapse collapse-arrow join-item border-base-300 border">
           <input type="radio" name="my-accordion-4" />
           <div className="collapse-title font-semibold">
-            
+            What is your life goal?
           </div>
           <div className="collapse-content text-sm">
-            
+            I want to help people with software!
           </div>
         </div>
       </div>

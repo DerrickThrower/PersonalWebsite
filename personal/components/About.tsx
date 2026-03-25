@@ -25,7 +25,7 @@ export function About() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <p className="text-emerald-400/70 text-xs font-mono tracking-widest uppercase mb-3">About me</p>
+          <p className="text-blue-400/70 text-xs font-mono tracking-widest uppercase mb-3">About me</p>
           <h2 className="text-3xl md:text-4xl font-bold text-white">Who I am</h2>
         </motion.div>
 
@@ -39,7 +39,7 @@ export function About() {
           >
             <div className="relative group">
               {/* Glow ring */}
-              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-br from-emerald-400/30 via-blue-400/20 to-purple-400/20 blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-br from-blue-400/30 via-blue-400/20 to-purple-400/20 blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="relative rounded-2xl overflow-hidden border border-white/10 w-72 h-80 md:w-80 md:h-96">
                 <Image
                   src="/DerrickFlexing.jpeg"
@@ -72,7 +72,7 @@ export function About() {
               </p>
               <p>
                 My goal is simple:{" "}
-                <span className="text-emerald-400 font-medium">
+                <span className="text-blue-400 font-medium">
                   help people through software.
                 </span>
               </p>
@@ -86,7 +86,7 @@ export function About() {
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={inView ? { opacity: 1, scale: 1 } : {}}
                   transition={{ duration: 0.4, delay: 0.4 + i * 0.07 }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-sm text-white/70 hover:border-emerald-400/30 hover:text-white transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-sm text-white/70 hover:border-blue-400/30 hover:text-white transition-colors"
                 >
                   <span>{h.icon}</span>
                   {h.label}

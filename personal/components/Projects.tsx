@@ -7,34 +7,26 @@ import { GithubIcon } from "@/components/icons"
 
 const projects = [
   {
-    title: "Anteater Almanac",
+    title: "Fu-Stamps",
     description:
-      "Course planning platform used by 16,000+ active UC Irvine students. Contributed features and improvements to the scheduling and planning tools.",
-    tech: ["Next.js", "PostgreSQL", "TypeScript"],
-    github: "https://github.com/icssc/AntAlmanac",
-    demo: null,
-  },
-  {
-    title: "PinoyPort",
-    description:
-      "Platform serving the Filipino student community, built by a team of 8 developers. Served as sub-lead, coordinating development and reviewing code.",
-    tech: ["React.js", "Node.js"],
+      "Digital stamp card system for 280+ members with attendance tracking and rewards. Built JWT-authenticated backend routes and responsive front-end interfaces.",
+    tech: ["Next.js", "MongoDB", "Tailwind CSS"],
     github: null,
     demo: null,
   },
   {
-    title: "Global Creation Foundation Dashboard",
+    title: "StellarShip",
     description:
-      "Management dashboard for a nonprofit focused on arts education. Supporting programs that have reached 300+ students across 5 continents.",
-    tech: ["React.js", "Vite", "TypeScript"],
+      "Scholarship aggregator platform collecting 150+ listings for students nationwide, with a custom chatbot powered by the OpenAI API answering scholarship FAQs.",
+    tech: ["React", "TypeScript", "Tailwind CSS", "Flask"],
     github: null,
     demo: null,
   },
   {
-    title: "Black in Tech UCI Website",
+    title: "LegalLensAI",
     description:
-      "Maintained and developed the club website to keep an accessible, up-to-date web presence for the Black in Tech community at UCI.",
-    tech: ["HTML", "CSS", "JavaScript"],
+      "Chrome extension that simplifies terms of service and flags security risks. Winner of Best Technology Security Project at UCSD's DiamondHacks among 300+ participants.",
+    tech: ["React", "Tailwind CSS", "Chrome Extensions API", "OpenAI API"],
     github: null,
     demo: null,
   },
@@ -138,7 +130,7 @@ export function Projects() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <p className="text-emerald-400/70 text-xs font-mono tracking-widest uppercase mb-3">
+          <p className="text-blue-400/70 text-xs font-mono tracking-widest uppercase mb-3">
             What I&apos;ve built
           </p>
           <h2 className="text-3xl md:text-4xl font-bold text-white">Projects</h2>

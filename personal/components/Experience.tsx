@@ -89,7 +89,7 @@ function ExperienceCard({
       className="relative pl-8"
     >
       {/* Timeline dot */}
-      <div className="absolute left-0 top-6 w-3 h-3 rounded-full bg-emerald-400/70 border-2 border-black ring-2 ring-emerald-400/20" />
+      <div className="absolute left-0 top-6 w-3 h-3 rounded-full bg-blue-400/70 border-2 border-black ring-2 ring-blue-400/20" />
 
       <div
         ref={cardRef}
@@ -100,7 +100,7 @@ function ExperienceCard({
           <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
             <div>
               <h3 className="text-white font-semibold text-base">{exp.role}</h3>
-              <p className="text-emerald-400/80 text-sm font-medium">{exp.org}</p>
+              <p className="text-blue-400/80 text-sm font-medium">{exp.org}</p>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-white/40 text-xs font-mono">{exp.dates}</span>
@@ -126,7 +126,7 @@ function ExperienceCard({
               {exp.tech.map((t) => (
                 <span
                   key={t}
-                  className="text-xs px-2 py-0.5 rounded-full bg-emerald-400/10 text-emerald-400/80 border border-emerald-400/20"
+                  className="text-xs px-2 py-0.5 rounded-full bg-blue-400/10 text-blue-400/80 border border-blue-400/20"
                 >
                   {t}
                 </span>
@@ -152,7 +152,7 @@ export function Experience() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <p className="text-emerald-400/70 text-xs font-mono tracking-widest uppercase mb-3">
+          <p className="text-blue-400/70 text-xs font-mono tracking-widest uppercase mb-3">
             What I&apos;ve done
           </p>
           <h2 className="text-3xl md:text-4xl font-bold text-white">Experience</h2>
@@ -161,7 +161,7 @@ export function Experience() {
         {/* Timeline */}
         <div className="relative">
           {/* Vertical line */}
-          <div className="absolute left-0 top-6 bottom-6 w-px bg-gradient-to-b from-emerald-400/40 via-emerald-400/20 to-transparent" />
+          <div className="absolute left-0 top-6 bottom-6 w-px bg-gradient-to-b from-blue-400/40 via-blue-400/20 to-transparent" />
 
           <div className="space-y-6">
             {experiences.map((exp, i) => (

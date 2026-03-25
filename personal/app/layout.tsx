@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
-import { Feet } from "@/components/footer";
-
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
 
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
-  title: "Personal website",
-  description: "Made with Love(and NEXTJS)",
+  title: "Derrick Thrower",
+  description: "CS student at UC Irvine building software that helps people.",
 };
 
 export default function RootLayout({
@@ -16,15 +23,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="min-h-screen flex flex-col">
-    <main className="flex-1">
-      {children}
-    </main>
-    <footer>
-      <Feet/>
-    </footer>
-  </body>
+    <html lang="en" className="scroll-smooth">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-black text-white`}>
+        {children}
+      </body>
     </html>
   );
 }

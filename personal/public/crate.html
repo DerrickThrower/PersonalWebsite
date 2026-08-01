@@ -227,6 +227,49 @@ body.pulled .rec-btn[data-inert="true"]{ pointer-events:none; opacity:0; }
   letter-spacing:.2em; text-transform:uppercase; color:var(--accent);
 }
 
+/* ---------- catalogue card overlay (typed, cream, ruled) ---------- */
+#cardnote{
+  position:fixed; z-index:14; left:0; top:0;
+  transform:translate(-50%,-50%);
+  background:linear-gradient(158deg,#EFEBDE 0%,#E7E2D3 60%,#DED8C7 100%);
+  border:1px solid rgba(60,52,38,.30); border-radius:1px;
+  padding:1.5em 1.9em 1.7em;
+  overflow:auto; -webkit-overflow-scrolling:touch;
+  opacity:0; visibility:hidden; pointer-events:none;
+  transition:opacity 220ms ease;
+  box-shadow:0 26px 70px rgba(0,0,0,.72);
+  color:#211E18;
+}
+#cardnote.show{ opacity:1; visibility:visible; pointer-events:auto; }
+#cardnote .cn-head{
+  display:flex; justify-content:space-between; align-items:baseline; gap:1em;
+  font-family:var(--mono); font-size:.72em; letter-spacing:.18em; text-transform:uppercase;
+  color:#8A6A3C; padding-bottom:.7em;
+  border-bottom:2px solid rgba(168,72,58,.5);
+}
+#cardnote h3{
+  font-family:var(--mono); font-weight:700; font-size:1.5em; letter-spacing:-.01em;
+  margin:.7em 0 .15em; color:#1B1812;
+}
+#cardnote .cn-kind{
+  font-family:var(--mono); font-size:.72em; letter-spacing:.16em; text-transform:uppercase;
+  color:#6B6355; margin:0 0 .9em;
+}
+#cardnote .cn-award{
+  display:flex; gap:.55em; align-items:flex-start;
+  font-family:var(--mono); font-size:.72em; line-height:1.5; letter-spacing:.04em;
+  text-transform:uppercase; color:#96421F;
+  border:1px solid rgba(150,66,31,.42); padding:.6em .75em; margin:0 0 1em;
+}
+#cardnote p.cn-notes{
+  font-family:var(--body); font-size:1.02em; line-height:1.6; color:#2B2820; margin:0 0 1.1em;
+}
+#cardnote .cn-stack{ display:flex; flex-wrap:wrap; gap:.4em; }
+#cardnote .cn-stack span{
+  font-family:var(--mono); font-size:.66em; letter-spacing:.1em; text-transform:uppercase;
+  color:#4A4536; border:1px solid rgba(60,52,38,.28); padding:.4em .65em;
+}
+
 /* ---------- pulled-state controls ---------- */
 #pullbar{
   position:fixed; z-index:22; left:50%; transform:translateX(-50%);
@@ -235,6 +278,7 @@ body.pulled .rec-btn[data-inert="true"]{ pointer-events:none; opacity:0; }
   transition:opacity 220ms ease;
 }
 body.pulled #pullbar{ opacity:1; visibility:visible; }
+body.card-open #btn-flip{ display:none; }   /* cards rise; only records flip */
 .pullbtn{
   font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
   color:var(--muted); background:rgba(14,14,16,.75); backdrop-filter:blur(6px);
@@ -288,6 +332,7 @@ body.fallback #grain,
 body.fallback #curtain,
 body.fallback #footline,
 body.fallback #liner,
+body.fallback #cardnote,
 body.fallback #pullbar{ display:none; }
 body.fallback #topbar{ position:static; }
 body.fallback #fallback-note{
@@ -301,12 +346,14 @@ body.fallback main > h2.sr{   /* must out-specify the .sr un-hiding rule below *
   font-family:var(--mono); font-size:11px; font-weight:400;
   letter-spacing:.2em; text-transform:uppercase; color:var(--accent);
 }
-body.fallback #crate-list{
+body.fallback #crate-list,
+body.fallback #catalog-list{
   position:static; display:grid; gap:.6rem;
   max-width:62rem; margin:1rem auto 5rem; padding:0 var(--pad);
   pointer-events:auto;
 }
-body.fallback #crate-list li{ position:static; }
+body.fallback #crate-list li,
+body.fallback #catalog-list li{ position:static; }
 body.fallback .rec-btn{
   cursor:default; height:auto; text-align:left;
   border:1px solid rgba(255,255,255,.08); padding:1.6rem 1.5rem;
@@ -385,10 +432,13 @@ body.fallback .rec-stack{
   <p id="fallback-note">WebGL unavailable — showing the plain text edition.</p>
   <h2 class="sr">Roles</h2>
   <ul id="crate-list"><!-- built from RECORDS --></ul>
+  <h2 class="sr">Projects</h2>
+  <ul id="catalog-list"><!-- built from CARDS --></ul>
 </main>
 
 <!-- ============ liner notes overlay (visual mirror of the focused <li>) ============ -->
 <div id="liner" aria-hidden="true"></div>
+<div id="cardnote" aria-hidden="true"></div>
 
 <!-- ============ footer caption + hint ============ -->
 <div id="footline">
@@ -519,22 +569,62 @@ const RECORDS = [
     limited: false
   }
 
+];
+
+/* ============================ THE CARD CATALOG ============================
+ * The cabinet beside the crate. One drawer per card — pull a drawer and the
+ * card rises out of it. The crate is where you worked; the catalog is what
+ * you built.
+ *
+ * `award` is optional. Set it and the card gets a stamped mark, the drawer
+ * label gets a brass star, and the award line prints on the card.
+ *
+ * Drawers are generated from this array, so adding a card adds a drawer.
+ * Three or four reads best; past six the cabinet gets tall.
+ * ========================================================================= */
+
+const CARDS = [
+  {
+    cat: "P-001",
+    title: "LegalLensAI",
+    kind: "Chrome extension",
+    dates: "2025",
+    award: "Best Technology Security Project · DiamondHacks 2025",
+    notes: "A Chrome extension that rewrites terms of service into plain language and flags the clauses worth worrying about. Won its category at UCSD's DiamondHacks against 300+ participants.",
+    stack: ["React", "Tailwind CSS", "Chrome Extensions API", "OpenAI API"]
+  },
+  {
+    cat: "P-002",
+    title: "StellarShip",
+    kind: "Web platform",
+    dates: "2025",
+    award: null,
+    notes: "A scholarship aggregator pulling 150+ listings for students nationwide, with a chatbot that answers scholarship questions instead of making people read the fine print.",
+    stack: ["React", "TypeScript", "Tailwind CSS", "Flask"]
+  },
+  {
+    cat: "P-003",
+    title: "Fu-Stamps",
+    kind: "Internal tool",
+    dates: "2025",
+    award: null,
+    notes: "A digital stamp card for 280+ club members — attendance tracking and rewards, with JWT-authenticated backend routes behind it.",
+    stack: ["Next.js", "MongoDB", "Tailwind CSS"]
+  }
+
   /* ------------------------------------------------------------------
-     DERRICK — the hackathon record goes here. Uncomment, fill in the
-     specifics (which hackathons, what you built, what you won), and it
-     will appear in the crate automatically. `limited: true` gives it the
-     LIMITED PRESSING foil sticker on the sleeve.
+     DERRICK — you're a 3× hackathon winner but only DiamondHacks is
+     documented above. Add the other two here and they'll get their own
+     drawers. Anything with an `award` set is stamped and starred.
 
   ,{
-    cat: "DT-007",
-    title: "Hackathons",
-    org: "3× Winner",
-    kind: "Singles & B-sides",
-    dates: "2025 – Present",
-    location: "California",
-    notes: "Solo win at DiamondHacks 2025. <add the other two wins, what you built, and the stack.>",
-    stack: ["Agentic AI", "Full-stack"],
-    limited: true
+    cat: "P-004",
+    title: "<project name>",
+    kind: "Hackathon project",
+    dates: "<year>",
+    award: "<what you won> · <which hackathon>",
+    notes: "<what it does, and what made it win>",
+    stack: ["<stack>"]
   }
      ------------------------------------------------------------------ */
 ];
@@ -599,6 +689,38 @@ RECORDS.forEach((r, i) => {
   btns.push(b);
 });
 
+const catalogEl = document.getElementById("catalog-list");
+const cardBtns = [];
+
+CARDS.forEach((c, i) => {
+  const li = document.createElement("li");
+  const b  = document.createElement("button");
+  b.className = "rec-btn card-btn";
+  b.type = "button";
+  b.dataset.i = String(i);
+  b.setAttribute("aria-expanded", "false");
+
+  const sr = document.createElement("span");
+  sr.className = "sr";
+  sr.innerHTML =
+    '<span class="rec-cat"></span>' +
+    '<span class="rec-title"></span>' +
+    '<span class="rec-meta"></span>' +
+    '<p class="rec-notes"></p>' +
+    '<span class="rec-stack"></span>';
+  sr.querySelector(".rec-cat").textContent   = c.cat + (c.award ? " · Award" : "");
+  sr.querySelector(".rec-title").textContent = c.title;
+  sr.querySelector(".rec-meta").textContent  =
+    [c.kind, c.dates].concat(c.award ? [c.award] : []).join(" · ");
+  sr.querySelector(".rec-notes").textContent = c.notes;
+  sr.querySelector(".rec-stack").textContent = "Stack: " + c.stack.join(", ");
+
+  b.appendChild(sr);
+  li.appendChild(b);
+  catalogEl.appendChild(li);
+  cardBtns.push(b);
+});
+
 const contactList = document.getElementById("contact-list");
 CONTACT.forEach(c => {
   if (!c || !c.v) return;
@@ -653,7 +775,7 @@ function goFallback(){
   document.body.classList.add("fallback");
   const stage = document.getElementById("stage");
   if (stage) stage.remove();
-  btns.forEach(b => {
+  btns.concat(cardBtns).forEach(b => {
     b.removeAttribute("aria-expanded");
     b.removeAttribute("data-inert");
     b.disabled = true;
@@ -971,6 +1093,7 @@ function makeVinylTexture(){
 const state = {
   focus: 0,
   pulled: -1,        // index of the pulled record, -1 = none
+  card: -1,          // index of the open catalogue card, -1 = none
   flipped: false,
   interacted: false,
   pushedHistory: false,
@@ -994,7 +1117,8 @@ Spring.prototype.step = function(dt){
 };
 
 let renderer, scene, camera, clock;
-let recs = [], dust, dustGeo, turntableDisc, spot, pullKey, backdrop, backdropMat;
+let recs = [], dust, dustGeo, turntableDisc, turntableGroup, spot, pullKey, backdrop, backdropMat;
+let catalogSpot, deckSpot;
 const FLOOR_Y = 0.08;          // top of the crate's inner floor
 const CRATE_HALF_Z = 0.70;
 
@@ -1031,6 +1155,7 @@ function init(){
   buildTable();
   buildCrate();
   buildRecords();
+  buildCatalog();
   buildTurntable();
   buildDust();
   buildBackdrop();
@@ -1080,10 +1205,15 @@ function buildLights(){
   scene.add(spot, spot.target);
 
   /* warm secondary pool over the turntable */
-  const spot2 = new THREE.SpotLight(PALETTE.spot, 3.2, 7.5, Math.PI * 0.20, 0.9, 1.7);
-  spot2.position.set(2.4, 2.8, 1.4);
-  spot2.target.position.set(1.9, 0.2, -0.12);
-  scene.add(spot2, spot2.target);
+  deckSpot = new THREE.SpotLight(PALETTE.spot, 3.2, 7.5, Math.PI * 0.20, 0.9, 1.7);
+  deckSpot.position.set(2.4, 2.8, 1.4);
+  scene.add(deckSpot, deckSpot.target);
+
+  /* its own pool over the catalog, so the room reads as three lit stations
+     rather than one spotlight with dark furniture at the edges */
+  catalogSpot = new THREE.SpotLight(PALETTE.spot, 3.0, 7.5, Math.PI * 0.21, 0.9, 1.7);
+  catalogSpot.position.set(-2.5, 2.9, 1.3);
+  scene.add(catalogSpot, catalogSpot.target);
 
   /* cool rim from behind-left, keeps the records readable against the dark */
   const rim = new THREE.DirectionalLight(0x6E86B8, 0.7);
@@ -1208,7 +1338,7 @@ function buildRecords(){
 }
 
 function buildTurntable(){
-  const g = new THREE.Group();
+  const g = turntableGroup = new THREE.Group();
   g.position.set(1.95, 0, -0.16);
 
   const plinth = new THREE.Mesh(
@@ -1291,6 +1421,192 @@ function buildTurntable(){
   scene.add(g);
 }
 
+/* =====================================================================
+   THE CARD CATALOG
+   A drawer per card. Pull one and the card rises out of it. Deliberately
+   a different verb from the crate: records flip, cards rise.
+   ===================================================================== */
+
+const CARD_W = 0.80, CARD_H = 0.50, DRAWER_H = 0.28, CAB_W = 1.02, CAB_D = 0.80;
+let catalogGroup, cards = [], cardPulledCenter = new THREE.Vector3();
+
+/* blank cream stock — the typed content is an HTML overlay, same reasoning
+   as the record backs: painting it here too would double every line */
+function makeCardFace(){
+  const W = 1024, H = 640;
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const ctx = c.getContext("2d");
+
+  const g = ctx.createLinearGradient(0, 0, W * .4, H);
+  g.addColorStop(0, "#EFEBDE"); g.addColorStop(.6, "#E7E2D3"); g.addColorStop(1, "#DED8C7");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  /* the red rule every catalogue card has across the top */
+  ctx.fillStyle = "rgba(168,72,58,.55)";
+  ctx.fillRect(0, H * .19, W, 2);
+
+  /* faint ruled lines */
+  ctx.fillStyle = "rgba(90,110,140,.16)";
+  for (let y = H * .31; y < H * .93; y += H * .105) ctx.fillRect(W * .06, y, W * .88, 1);
+
+  /* punched hole along the bottom edge, where the rod goes through */
+  ctx.fillStyle = "rgba(40,36,30,.42)";
+  ctx.beginPath(); ctx.arc(W / 2, H - 34, 17, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,.30)";
+  ctx.beginPath(); ctx.arc(W / 2, H - 37, 17, 0, Math.PI * 2); ctx.fill();
+
+  /* age: soft edge burn + tooth */
+  const e = ctx.createRadialGradient(W / 2, H / 2, H * .3, W / 2, H / 2, H * .85);
+  e.addColorStop(0, "rgba(120,100,70,0)"); e.addColorStop(1, "rgba(120,100,70,.20)");
+  ctx.fillStyle = e; ctx.fillRect(0, 0, W, H);
+  grain(ctx, W, H, 7000, .07);
+  return c;
+}
+
+/* drawer front: dark wood, brass label holder, project name, star if awarded */
+function makeDrawerFace(card){
+  const W = 1024, H = 272;
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const ctx = c.getContext("2d");
+
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, "#2C2419"); g.addColorStop(.5, "#241D14"); g.addColorStop(1, "#1B160F");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "rgba(255,235,200,.05)";
+  ctx.fillRect(0, 0, W, 3);
+
+  /* brass label holder */
+  const pw = W * .58, ph = H * .46, px = (W - pw) / 2, py = (H - ph) / 2;
+  ctx.fillStyle = "rgba(200,162,75,.85)";
+  roundRect(ctx, px - 9, py - 9, pw + 18, ph + 18, 3); ctx.fill();
+  const cg = ctx.createLinearGradient(px, py, px, py + ph);
+  cg.addColorStop(0, "#EDE9DC"); cg.addColorStop(1, "#D8D2C0");
+  ctx.fillStyle = cg;
+  ctx.fillRect(px, py, pw, ph);
+
+  ctx.fillStyle = "#211E18";
+  ctx.font = '700 40px "Space Mono", monospace';
+  const t = card.title.toUpperCase();
+  const tw = trackedWidth(ctx, t, 4);
+  tracked(ctx, t, px + (pw - tw) / 2, py + ph * .64, 4);
+
+  ctx.fillStyle = "rgba(200,162,75,.9)";
+  ctx.font = '400 26px "Space Mono", monospace';
+  ctx.fillText(card.cat, W * .085, H * .60);
+  if (card.award){
+    ctx.fillStyle = "#C8A24B";
+    ctx.font = '700 38px "Space Grotesk", sans-serif';
+    ctx.fillText("★", W * .875, H * .61);
+  }
+  grain(ctx, W, H, 2600, .05);
+  return c;
+}
+
+function buildCatalog(){
+  catalogGroup = new THREE.Group();
+  catalogGroup.position.set(-2.05, 0, -0.04);
+  catalogGroup.rotation.y = 0.20;          // angled toward the camera
+
+  const wood = new THREE.MeshStandardMaterial({
+    color: PALETTE.crate, roughness: 0.8, metalness: 0.04
+  });
+  const n = CARDS.length;
+  const bodyH = n * DRAWER_H + 0.08;
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(CAB_W, bodyH, CAB_D), wood);
+  body.position.y = bodyH / 2;
+  catalogGroup.add(body);
+
+  /* overhanging top slab and a plinth, so it reads as furniture not a crate */
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(CAB_W + 0.09, 0.05, CAB_D + 0.09), wood);
+  slab.position.y = bodyH + 0.025;
+  catalogGroup.add(slab);
+  const plinth = new THREE.Mesh(new THREE.BoxGeometry(CAB_W + 0.05, 0.045, CAB_D + 0.05), wood);
+  plinth.position.y = 0.022;
+  catalogGroup.add(plinth);
+
+  const cardTex = new THREE.CanvasTexture(makeCardFace());
+  cardTex.encoding = THREE.sRGBEncoding;
+  cardTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  const cardEdge = new THREE.MeshStandardMaterial({ color: 0xC9C3B2, roughness: 0.95 });
+  const cardFace = new THREE.MeshStandardMaterial({ map: cardTex, roughness: 0.86 });
+
+  CARDS.forEach((cd, i) => {
+    const y = bodyH - 0.04 - DRAWER_H / 2 - i * DRAWER_H;
+
+    /* the drawer front, which slides toward the camera */
+    const fTex = new THREE.CanvasTexture(makeDrawerFace(cd));
+    fTex.encoding = THREE.sRGBEncoding;
+    fTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    const faceMat = new THREE.MeshStandardMaterial({ map: fTex, roughness: 0.72 });
+
+    const drawer = new THREE.Group();
+    drawer.position.set(0, y, CAB_D / 2 + 0.024);
+    const front = new THREE.Mesh(
+      new THREE.BoxGeometry(CAB_W - 0.05, DRAWER_H - 0.03, 0.048),
+      [wood, wood, wood, wood, faceMat, wood]
+    );
+    drawer.add(front);
+
+    const knob = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.028, 0.032, 0.05, 16),
+      new THREE.MeshStandardMaterial({ color: PALETTE.accent, roughness: 0.4, metalness: 0.8 })
+    );
+    knob.rotation.x = Math.PI / 2;
+    knob.position.set(0, -DRAWER_H * 0.30, 0.045);
+    drawer.add(knob);
+    catalogGroup.add(drawer);
+
+    /* the card itself — parked inside the cabinet, hidden by the body */
+    const card = new THREE.Mesh(
+      new THREE.BoxGeometry(CARD_W, CARD_H, 0.008),
+      [cardEdge, cardEdge, cardEdge, cardEdge, cardFace, cardEdge]
+    );
+    card.castShadow = true;
+    /* deliberately a scene child, not a child of the cabinet: updateCard drives
+       it in world space (it has to fly to the camera), and parenting it here
+       would apply the cabinet's transform on top of that */
+    scene.add(card);
+
+    cards.push({
+      data: cd, drawer, card,
+      restY: y, restZ: CAB_D / 2 - 0.10,
+      slide: new Spring(0, 120, 20),
+      rise:  new Spring(0, 100, 18),
+      el: cardBtns[i].parentElement,
+      btn: cardBtns[i]
+    });
+  });
+
+  catalogGroup.traverse(o => { if (o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
+  scene.add(catalogGroup);
+}
+
+function updateCard(cd, dt){
+  const s = THREE.MathUtils.clamp(cd.slide.step(dt), 0, 1.05);
+  const r = THREE.MathUtils.clamp(cd.rise.step(dt), 0, 1.05);
+
+  cd.drawer.position.z = CAB_D / 2 + 0.024 + s * 0.40;
+
+  /* rest: standing in the open drawer. pulled: centred at the camera. */
+  tmpV.set(0, cd.restY, cd.restZ + s * 0.40);
+  catalogGroup.localToWorld(tmpV);
+  tmpQ.copy(catalogGroup.quaternion);
+
+  if (r > 0.0005){
+    facer.position.copy(cardPulledCenter);
+    facer.up.copy(camera.up);
+    facer.lookAt(camera.position);
+    tmpQ2.copy(facer.quaternion);
+    tmpQ.slerp(tmpQ2, r);
+    tmpV2.copy(cardPulledCenter);
+    tmpV.lerp(tmpV2, r);
+  }
+  cd.card.position.copy(tmpV);
+  cd.card.quaternion.copy(tmpQ);
+  cd.card.visible = s > 0.02 || r > 0.02;
+}
+
 function buildDust(){
   /* confined to the spotlight's cone so it reads as dust in the beam,
      not as a starfield behind the scene */
@@ -1336,15 +1652,37 @@ function layoutCamera(){
   const aspect = window.innerWidth / Math.max(1, window.innerHeight);
   const narrow = aspect < 1.0;
 
-  const R = 4.25 * Math.min(1.6, Math.max(1, 1.06 / aspect));
-  const elev = THREE.MathUtils.degToRad(narrow ? 36 : 40);
+  /* Three objects now share the room. Wide screens line them up; narrow ones
+     stack them in depth instead, because a phone has height to spend and no
+     width. Without this the catalog and turntable fall off both edges. */
+  if (narrow){
+    catalogGroup.position.set(-0.98, 0, -1.80);
+    turntableGroup.position.set(0.94, 0, -1.64);
+  } else {
+    catalogGroup.position.set(-2.05, 0, -0.04);
+    turntableGroup.position.set(1.95, 0, -0.16);
+  }
+
+  catalogGroup.updateMatrixWorld(true);   // cards read their rest pose off this
+
+  /* the side pools follow their furniture rather than sitting at fixed points */
+  const cg = catalogGroup.position, tg = turntableGroup.position;
+  catalogSpot.position.set(cg.x - 0.45, 2.9, cg.z + 1.35);
+  catalogSpot.target.position.set(cg.x, 0.45, cg.z);
+  catalogSpot.target.updateMatrixWorld();
+  deckSpot.position.set(tg.x + 0.45, 2.8, tg.z + 1.55);
+  deckSpot.target.position.set(tg.x - 0.05, 0.2, tg.z);
+  deckSpot.target.updateMatrixWorld();
+
+  const R = (narrow ? 4.5 : 5.0) * Math.min(1.6, Math.max(1, 1.06 / aspect));
+  const elev = THREE.MathUtils.degToRad(narrow ? 38 : 40);
 
   /* fog has to track the camera distance, or the crate sits inside it on
      narrow screens (where the camera pulls back) and washes out to the bg */
   scene.fog.near = R * 0.78;
   scene.fog.far  = R * 2.5;
 
-  camLookAt.set(narrow ? 0.18 : 0.42, 0.46, 0);
+  camLookAt.set(0, 0.46, narrow ? -0.42 : 0);
   camTargetPos.set(
     camLookAt.x,
     camLookAt.y + Math.sin(elev) * R,
@@ -1357,6 +1695,10 @@ function layoutCamera(){
   const dist = Math.max(2.05, 1.78 / aspect);
   camera.getWorldDirection(tmpV);
   pulledCenter.copy(camera.position).add(tmpV.clone().multiplyScalar(dist));
+
+  /* a catalogue card is narrower than a sleeve, so it's brought closer —
+     otherwise it reads smaller on screen than a record for the same gesture */
+  cardPulledCenter.copy(camera.position).add(tmpV.clone().multiplyScalar(dist * 0.80));
 
   backdrop.position.copy(camera.position).add(tmpV.clone().multiplyScalar(dist + 1.15));
   backdrop.lookAt(camera.position);
@@ -1445,7 +1787,52 @@ const projUp = new THREE.Vector3();
 function positionOverlay(){
   const W = window.innerWidth, H = window.innerHeight;
   const anyPulled = state.pulled >= 0;
+  const anyCard = state.card >= 0;
   camUp.setFromMatrixColumn(camera.matrixWorld, 1).normalize();  // true screen-up
+
+  /* catalogue drawers: the hit target is the drawer front, not the card —
+     the card lives inside the cabinet until you open it */
+  cards.forEach((cd, i) => {
+    cd.drawer.getWorldPosition(proj);
+    projUp.copy(proj).addScaledVector(camUp, DRAWER_H / 2);
+    proj.project(camera);
+    projUp.project(camera);
+
+    const behind = proj.z > 1;
+    const x = (proj.x * 0.5 + 0.5) * W;
+    const y = (-proj.y * 0.5 + 0.5) * H;
+    const half = Math.max(14, Math.abs((-projUp.y * 0.5 + 0.5) * H - y));
+    const wPx = Math.max(64, half * 2 * (CAB_W / DRAWER_H) * 0.82);
+    const hPx = Math.max(34, half * 2.1);
+
+    const hidden = behind || anyPulled || (anyCard && i !== state.card);
+    cd.el.style.width  = wPx + "px";
+    cd.el.style.height = hPx + "px";
+    cd.el.style.transform =
+      "translate(" + (x - wPx / 2).toFixed(1) + "px," + (y - hPx / 2).toFixed(1) + "px)";
+    cd.el.style.zIndex = String(Math.round((1 - proj.z) * 10000));
+    cd.btn.dataset.inert = String(hidden);
+    cd.btn.tabIndex = hidden ? -1 : 0;
+  });
+
+  /* the typed card overlay tracks the risen card */
+  if (anyCard){
+    const cd = cards[state.card];
+    cd.card.getWorldPosition(proj);
+    projUp.copy(proj).addScaledVector(camUp, CARD_H / 2);
+    proj.project(camera);
+    projUp.project(camera);
+    const x = (proj.x * 0.5 + 0.5) * W;
+    const y = (-proj.y * 0.5 + 0.5) * H;
+    const half = Math.abs((-projUp.y * 0.5 + 0.5) * H - y);
+    const wCard = half * 2 * (CARD_W / CARD_H);
+    const w = Math.min(W - 28, wCard * 0.97);
+    cardnote.style.width = w + "px";
+    cardnote.style.maxHeight = Math.min(H - 110, half * 2 * 1.5) + "px";
+    cardnote.style.left = x + "px";
+    cardnote.style.top = y + "px";
+    cardnote.style.fontSize = THREE.MathUtils.clamp(w / 30, 10.5, 17) + "px";
+  }
 
   recs.forEach((rc, i) => {
     rc.mesh.getWorldPosition(proj);
@@ -1462,7 +1849,7 @@ function positionOverlay(){
        swallow it. Depth ordering below settles any remaining overlap. */
     const size = Math.max(48, half * (i === state.focus ? 2.0 : 1.15));
 
-    const hidden = behind || (anyPulled && i !== state.pulled);
+    const hidden = behind || anyCard || (anyPulled && i !== state.pulled);
     rc.el.style.width  = size + "px";
     rc.el.style.height = size + "px";
     rc.el.style.transform =
@@ -1534,13 +1921,14 @@ function tick(){
     camera.lookAt(camLookAt);
   }
 
-  const dimT = state.pulled >= 0 ? 1 : 0;
+  const dimT = (state.pulled >= 0 || state.card >= 0) ? 1 : 0;
   const k = REDUCE ? 1 : 1 - Math.exp(-5.5 * dt);
   backdropMat.opacity += (dimT * 0.74 - backdropMat.opacity) * k;
   pullKey.intensity += (dimT * 3.1 * spotFade - pullKey.intensity) * k;
   backdrop.visible = backdropMat.opacity > 0.004;
 
   for (const rc of recs) updateRecord(rc, dt);
+  for (const cd of cards) updateCard(cd, dt);
 
   positionOverlay();
   renderer.render(scene, camera);
@@ -1561,9 +1949,19 @@ function markInteracted(){
 }
 
 function updateCaption(){
-  const r = RECORDS[state.focus];
   caption.innerHTML = "";
   const mk = (cls, txt) => { const s = document.createElement("span"); s.className = cls; s.textContent = txt; return s; };
+
+  /* an open card owns the caption; otherwise it follows the focused record */
+  if (state.card >= 0){
+    const c = CARDS[state.card];
+    caption.appendChild(mk("cat", c.cat));
+    caption.appendChild(mk("sep", "·"));
+    caption.appendChild(mk("org", c.title));
+    if (c.award) caption.appendChild(mk("pressing", "Award"));
+    return;
+  }
+  const r = RECORDS[state.focus];
   caption.appendChild(mk("cat", r.cat));
   caption.appendChild(mk("sep", "·"));
   caption.appendChild(mk("org", r.org));
@@ -1612,6 +2010,7 @@ function buildLiner(r){
 
 function pull(i){
   markInteracted();
+  if (state.card >= 0) closeCard();       // only one thing out at a time
   if (state.focus !== i) setFocus(i, true);
   if (state.pulled === i) return;
 
@@ -1683,6 +2082,97 @@ function returnToCrate(viaHistory){
   }
 }
 
+/* -------------------- the card catalog -------------------- */
+const cardnote = document.getElementById("cardnote");
+let cardNoteTimer = null;
+
+function buildCardNote(c){
+  cardnote.innerHTML = "";
+  const head = document.createElement("div");
+  head.className = "cn-head";
+  head.innerHTML = '<span class="cat"></span><span>Catalogue</span>';
+  head.querySelector(".cat").textContent = c.cat;
+  cardnote.appendChild(head);
+
+  const h3 = document.createElement("h3"); h3.textContent = c.title; cardnote.appendChild(h3);
+  const kind = document.createElement("p"); kind.className = "cn-kind";
+  kind.textContent = [c.kind, c.dates].join(" · ");
+  cardnote.appendChild(kind);
+
+  if (c.award){
+    const a = document.createElement("p"); a.className = "cn-award";
+    a.innerHTML = '<span>★</span><span></span>';
+    a.lastChild.textContent = c.award;
+    cardnote.appendChild(a);
+  }
+
+  const p = document.createElement("p"); p.className = "cn-notes"; p.textContent = c.notes;
+  cardnote.appendChild(p);
+
+  const st = document.createElement("div"); st.className = "cn-stack";
+  c.stack.forEach(s => { const e = document.createElement("span"); e.textContent = s; st.appendChild(e); });
+  cardnote.appendChild(st);
+}
+
+function openCard(i){
+  markInteracted();
+  if (state.pulled >= 0) returnToCrate();          // only one thing out at a time
+  if (state.card === i) return;
+  if (state.card >= 0) cardBtns[state.card].setAttribute("aria-expanded", "false");
+
+  state.card = i;
+  cards.forEach((cd, k) => {
+    cd.slide.t = (k === i) ? 1 : 0;
+    cd.rise.t  = (k === i) ? 1 : 0;
+    if (REDUCE){ cd.slide.x = cd.slide.t; cd.rise.x = cd.rise.t; cd.slide.v = cd.rise.v = 0; }
+  });
+
+  document.body.classList.add("pulled", "card-open");
+  document.getElementById("gl").classList.add("pulled");
+  cardBtns[i].setAttribute("aria-expanded", "true");
+  buildCardNote(CARDS[i]);
+  updateCaption();
+
+  clearTimeout(cardNoteTimer);
+  cardNoteTimer = setTimeout(() => {
+    if (state.card === i){ positionOverlay(); cardnote.classList.add("show"); }
+  }, REDUCE ? 0 : 340);
+
+  if (!state.pushedHistory){
+    try { history.pushState({ crate: "card" }, ""); state.pushedHistory = true; } catch (_) {}
+  }
+}
+
+function closeCard(viaHistory){
+  if (state.card < 0) return;
+  const i = state.card;
+  state.card = -1;
+  clearTimeout(cardNoteTimer);
+  cardnote.classList.remove("show");
+  cards.forEach(cd => {
+    cd.slide.t = 0; cd.rise.t = 0;
+    if (REDUCE){ cd.slide.x = 0; cd.rise.x = 0; cd.slide.v = cd.rise.v = 0; }
+  });
+  document.body.classList.remove("pulled", "card-open");
+  document.getElementById("gl").classList.remove("pulled");
+  cardBtns[i].setAttribute("aria-expanded", "false");
+  updateCaption();
+
+  if (state.pushedHistory && !viaHistory){
+    state.pushedHistory = false;
+    try { history.back(); } catch (_) {}
+  } else if (viaHistory){
+    state.pushedHistory = false;
+  }
+}
+
+cardBtns.forEach((b, i) => {
+  b.addEventListener("click", () => {
+    if (suppressClick) return;
+    if (state.card === i) closeCard(); else openCard(i);
+  });
+});
+
 /* record buttons: focus → pull → flip */
 btns.forEach((b, i) => {
   b.addEventListener("click", () => {
@@ -1747,7 +2237,11 @@ window.addEventListener("blur", onPointerUp);
 document.addEventListener("visibilitychange", () => { if (document.hidden) onPointerUp(); });
 
 /* click on empty space while pulled → back to the crate */
-glEl.addEventListener("click", () => { if (state.pulled >= 0 && !suppressClick) returnToCrate(); });
+glEl.addEventListener("click", () => {
+  if (suppressClick) return;
+  if (state.card >= 0) closeCard();
+  else if (state.pulled >= 0) returnToCrate();
+});
 
 /* wheel browses too */
 let wheelLock = 0;
@@ -1781,6 +2275,7 @@ window.addEventListener("keydown", e => {
       e.preventDefault(); setFocus(RECORDS.length - 1, true); btns[state.focus].focus(); break;
     case "Escape":
       if (document.querySelector('.sheet[data-open="true"]')){ setSheet(null, false); break; }
+      if (state.card >= 0){ e.preventDefault(); const c = state.card; closeCard(); cardBtns[c].focus(); break; }
       if (state.pulled >= 0){ e.preventDefault(); const i = state.pulled; returnToCrate(); btns[i].focus(); }
       break;
     case " ": case "Enter":
@@ -1795,6 +2290,7 @@ window.addEventListener("keydown", e => {
 
 /* browser back closes the pulled record */
 window.addEventListener("popstate", () => {
+  if (state.card >= 0) closeCard(true);
   if (state.pulled >= 0) returnToCrate(true);
 });
 
@@ -1809,6 +2305,7 @@ document.getElementById("btn-next").addEventListener("click", () => {
 });
 document.getElementById("btn-flip").addEventListener("click", () => flip());
 document.getElementById("btn-close").addEventListener("click", () => {
+  if (state.card >= 0){ const c = state.card; closeCard(); cardBtns[c].focus(); return; }
   const i = state.pulled; returnToCrate(); if (i >= 0) btns[i].focus();
 });
 

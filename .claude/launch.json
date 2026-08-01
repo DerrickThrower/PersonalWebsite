@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "record-crate",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8321", "--directory", "record-crate"],
-      "port": 8321
+      "name": "personal",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "personal"],
+      "port": 3000
     }
   ]
 }

@@ -3,45 +3,48 @@
 A 3D personal portfolio: a moody, spotlit record shop in miniature. Each record is a role.
 Pull one out, flip it over, read the liner notes.
 
-Everything is in a single self-contained `index.html` — no build step, no external images.
-Sleeve art is generated procedurally onto `<canvas>` at runtime.
+**This is the site's homepage.** It's a single self-contained file — no build step, no
+external images. Sleeve art is generated procedurally onto `<canvas>` at runtime.
 
----
+## Where it lives, and how it gets to `/`
+
+| | |
+|---|---|
+| The file | `public/crate.html` — the whole site, one file |
+| Served at | `/`, via a `beforeFiles` rewrite in `next.config.ts` |
+| Previous homepage | moved to `app/classic/page.tsx`, still reachable at `/classic` |
+
+The rewrite (not a redirect) runs ahead of app-router matching, so `/` serves the crate
+while the URL stays `/`. Because it's a plain static file in `public/`, Next's
+`app/layout.tsx` does **not** wrap it — its `<head>`, fonts and styles are all its own.
+
+To put the old site back at `/`, delete the `rewrites()` block from `next.config.ts` and
+move `app/classic/page.tsx` back to `app/page.tsx`.
 
 ## Run it locally
 
-Just open the file:
+With the Next app (this is what production does):
 
 ```bash
-open index.html
+npm run dev
 ```
 
-Or serve it (recommended — matches how it will behave when deployed):
+Then visit <http://localhost:3000>.
+
+Or open the file straight from disk — it has no dependency on Next:
 
 ```bash
-python3 -m http.server 8000
+open public/crate.html
 ```
-
-Then visit <http://localhost:8000>.
 
 Three.js r128 loads from a CDN, so you need a network connection the first time.
-
-## Deploy it
-
-It's static. Drop the folder on any host.
-
-- **Vercel** — `vercel deploy` from this directory, or point a project at it with no build command.
-- **GitHub Pages** — commit the folder and set Pages to serve from it.
-- **Netlify / Cloudflare Pages** — drag the folder in.
-
-No build command. No output directory. Publish directory is this folder.
 
 ---
 
 ## Editing the content
 
-Everything you'd want to change lives at the top of the `<script>` block in `index.html`,
-under `/* ---------------------------- DATA ---------------------------- */`.
+Everything you'd want to change lives at the top of the `<script>` block in
+`public/crate.html`, under `/* ---------------------------- DATA ---------------------------- */`.
 
 ### The records
 

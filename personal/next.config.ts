@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
       // not a redirect, so nothing bounces to /crate.html in the address bar.
       beforeFiles: [
         { source: "/", destination: "/crate.html" },
+        { source: "/arcade", destination: "/arcade.html" },
+        { source: "/server", destination: "/server.html" },
+        { source: "/darkroom", destination: "/darkroom.html" },
       ],
       afterFiles: [],
       fallback: [],

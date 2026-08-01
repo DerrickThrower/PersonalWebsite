@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Darkroom — Derrick Thrower</title>
+<meta name="description" content="Prints hanging under a safelight. Hover one and it develops." />
+<meta name="color-scheme" content="dark" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#0A0304; --ink:#F0E2E0; --muted:#8A6A6A; --accent:#E2564B; --safe:#FF3B2E;
+  --display:"Space Grotesk",Arial,sans-serif;
+  --body:"Newsreader",Georgia,serif;
+  --mono:"Space Mono",ui-monospace,Menlo,monospace;
+  --pad:clamp(16px,3.2vw,34px);
+}
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--mono);
+  overflow:hidden; overscroll-behavior:none; -webkit-font-smoothing:antialiased; }
+body.fallback{ overflow:auto; }
+.sr{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
+  clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; }
+
+#stage{ position:fixed; inset:0; }
+body.fallback #stage{ display:none; }
+#gl{ display:block; width:100%; height:100%; touch-action:none; }
+
+/* the safelight sits over everything — a darkroom is red before it is anything else */
+#safelight{ position:fixed; inset:0; z-index:3; pointer-events:none;
+  background:radial-gradient(80% 60% at 50% 8%, rgba(255,59,46,.20), rgba(255,40,30,.05) 55%, rgba(0,0,0,0) 78%);
+  mix-blend-mode:screen; }
+#vignette{ position:fixed; inset:0; z-index:4; pointer-events:none;
+  background:radial-gradient(115% 88% at 50% 42%, rgba(0,0,0,0) 30%, rgba(0,0,0,.62) 72%, rgba(0,0,0,.96) 100%); }
+#grain{ position:fixed; inset:-50%; z-index:5; pointer-events:none; opacity:.05;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>"); }
+#curtain{ position:fixed; inset:0; z-index:60; background:#000; pointer-events:none;
+  opacity:1; transition:opacity 900ms ease 100ms; }
+body.lit #curtain{ opacity:0; }
+body.leaving #curtain{ opacity:1; transition:opacity 400ms ease; }
+
+#topbar{ position:fixed; z-index:20; inset:0 0 auto 0; padding:var(--pad);
+  padding-top:max(var(--pad),env(safe-area-inset-top));
+  display:flex; justify-content:space-between; align-items:baseline; gap:1rem; pointer-events:none; }
+#topbar > *{ pointer-events:auto; }
+.mark{ font-family:var(--display); font-weight:700; font-size:clamp(15px,2.1vw,20px);
+  letter-spacing:.13em; text-transform:uppercase; margin:0; }
+.mark small{ display:block; font-family:var(--mono); font-size:11px; font-weight:400;
+  letter-spacing:.11em; color:var(--muted); text-transform:uppercase; margin-top:.35em; }
+
+#footline{ position:fixed; z-index:20; inset:auto 0 0 0;
+  bottom:max(var(--pad),env(safe-area-inset-bottom)); padding:0 var(--pad);
+  text-align:center; pointer-events:none; }
+#caption{ font-family:var(--mono); font-size:clamp(11px,1.5vw,13px); letter-spacing:.18em;
+  text-transform:uppercase; margin:0 0 .5rem; color:var(--ink); }
+#caption .undev{ color:var(--muted); }
+#hint{ font-family:var(--mono); font-size:11px; letter-spacing:.13em; text-transform:uppercase;
+  color:var(--muted); margin:0; }
+
+#print-list{ position:fixed; inset:0; z-index:10; margin:0; padding:0; list-style:none; pointer-events:none; }
+#print-list li{ position:absolute; left:0; top:0; }
+.print-btn{ display:block; width:100%; height:100%; padding:0; margin:0; background:none;
+  border:1px solid transparent; border-radius:2px; cursor:pointer; pointer-events:auto;
+  color:inherit; font:inherit; transition:border-color 150ms; }
+.print-btn:hover{ border-color:rgba(226,86,75,.4); }
+.print-btn:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
+
+#plate{
+  position:fixed; z-index:14; left:50%; transform:translateX(-50%);
+  bottom:calc(max(var(--pad),env(safe-area-inset-bottom)) + 3.6rem);
+  width:min(30rem,90vw); text-align:center;
+  opacity:0; visibility:hidden; transition:opacity 240ms ease; pointer-events:none;
+}
+#plate.show{ opacity:1; visibility:visible; }
+#plate .p-title{ font-family:var(--display); font-weight:700; font-size:1.25rem; margin:0 0 .3rem; }
+#plate .p-meta{ font-family:var(--mono); font-size:11px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--accent); margin:0 0 .5rem; }
+#plate .p-note{ font-family:var(--body); font-size:1rem; line-height:1.55; color:#D8C6C4; margin:0; }
+
+#fallback-note{ display:none; }
+body.fallback #safelight, body.fallback #vignette, body.fallback #grain,
+body.fallback #curtain, body.fallback #footline, body.fallback #plate{ display:none; }
+body.fallback #topbar{ position:static; }
+body.fallback #fallback-note{ display:block; max-width:56rem; margin:0 auto;
+  padding:1.4rem var(--pad) 0; font-size:11px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--muted); }
+body.fallback #print-list{ position:static; display:grid; gap:.6rem; max-width:56rem;
+  margin:1rem auto 4rem; padding:0 var(--pad); pointer-events:auto; }
+body.fallback #print-list li{ position:static; }
+body.fallback .print-btn{ height:auto; text-align:left; cursor:default;
+  border:1px solid rgba(255,255,255,.08); padding:1.2rem 1.3rem;
+  background:linear-gradient(170deg,#140809,#0C0405); }
+body.fallback .sr{ position:static; width:auto; height:auto; margin:0; overflow:visible;
+  clip:auto; clip-path:none; white-space:normal; }
+body.fallback .pr-title{ display:block; font-family:var(--display); font-weight:700; font-size:1.2rem; }
+body.fallback .pr-meta{ display:block; color:var(--accent); font-size:.75rem;
+  letter-spacing:.14em; text-transform:uppercase; margin-top:.3rem; }
+body.fallback .pr-note{ display:block; font-family:var(--body); color:#D8C6C4; margin-top:.5rem; font-size:1rem; }
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{ animation-duration:.001ms !important; transition-duration:.001ms !important; }
+}
+</style>
+</head>
+<body>
+
+<header id="topbar">
+  <h1 class="mark">Darkroom<small>Hover a print and it develops</small></h1>
+  <nav id="roomnav" aria-label="Rooms"></nav>
+</header>
+
+<div id="stage" aria-hidden="true"><canvas id="gl"></canvas></div>
+<div id="safelight" aria-hidden="true"></div>
+<div id="vignette" aria-hidden="true"></div>
+<div id="grain" aria-hidden="true"></div>
+<div id="curtain" aria-hidden="true"></div>
+
+<main>
+  <p id="fallback-note">WebGL unavailable — showing the plain text edition.</p>
+  <h2 class="sr">Prints</h2>
+  <ul id="print-list"><!-- built from PRINTS --></ul>
+</main>
+
+<div id="plate" aria-hidden="true"></div>
+
+<div id="footline">
+  <p id="caption"></p>
+  <p id="hint">hover to develop &middot; click to take it down</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/room-nav.js"></script>
+<script>
+/* =====================================================================
+   THE DARKROOM
+   Prints pegged to a wire under a safelight. Hovering one puts it in the
+   developer: the image climbs out of blank paper, low contrast first,
+   the way a real print comes up.
+
+   DERRICK — the captions below describe only what is visible in each
+   frame. I don't know where or when these were taken, so edit them.
+   `src: null` is an undeveloped sheet. That is a real state in
+   a darkroom, not a placeholder, so the room reads fine half-empty. Drop
+   photos in public/darkroom-art/ and fill the src + caption to develop
+   them. Five or six prints is a full wire.
+   ===================================================================== */
+
+const PRINTS = [
+  { src:"photos/IMG_5012.jpeg", aspect:0.74,
+    title:"Raised by Wolves", meta:"Storefront",
+    note:"Outside the shop, thumbs up." },
+  { src:"photos/2282D286-C0FB-488E-8996-80C8B0117C1B.jpg", aspect:0.75,
+    title:"The Formal", meta:"Group at night",
+    note:"Everyone managed to fit in one frame." },
+  { src:"photos/IMG_5157.jpeg", aspect:1.33,
+    title:"Between Sessions", meta:"Three of us",
+    note:"Chairs against the wall, waiting on something." },
+  { src:"photos/F07FB0B1-F37C-404A-A5E8-A4995D988E00.jpg", aspect:0.75,
+    title:"Flower Clip", meta:"Outdoors",
+    note:"Under the trees, mid-afternoon." },
+  { src:"photos/3788BDA3-0EFA-48D3-83D9-E17E716F9B6A.jpg", aspect:0.75,
+    title:"Peach Kendama", meta:"Indoors",
+    note:"The shirt is a wall of Go. The peach is not." },
+  { src:"photos/IMG_4695.jpeg", aspect:1.33,
+    title:"3CAT", meta:"Boba",
+    note:"Pure bliss in every sip, per the cup." },
+  { src:"photos/IMG_4789.jpeg", aspect:0.66,
+    title:"Dog Filter", meta:"Selfie",
+    note:"Submitted without comment." },
+  { src:"photos/IMG_4744.jpeg", aspect:1.18,
+    title:"Gold Balloons", meta:"Somebody's birthday",
+    note:"Low resolution, high spirits." }
+];
+
+/* ---------------- accessible DOM ---------------- */
+const listEl = document.getElementById("print-list");
+const pBtns = [];
+PRINTS.forEach((p,i) => {
+  const li=document.createElement("li");
+  const b=document.createElement("button");
+  b.className="print-btn"; b.type="button"; b.dataset.i=String(i);
+  b.setAttribute("aria-expanded","false");
+  const sr=document.createElement("span"); sr.className="sr";
+  sr.innerHTML='<span class="pr-title"></span><span class="pr-meta"></span><span class="pr-note"></span>';
+  sr.querySelector(".pr-title").textContent=p.title;
+  sr.querySelector(".pr-meta").textContent=p.meta;
+  sr.querySelector(".pr-note").textContent=p.note;
+  b.appendChild(sr); li.appendChild(b); listEl.appendChild(li); pBtns.push(b);
+});
+
+const mqReduce=matchMedia("(prefers-reduced-motion: reduce)");
+let REDUCE=mqReduce.matches;
+mqReduce.addEventListener?.("change",e=>{ REDUCE=e.matches; });
+
+function webglOK(){
+  try{ const c=document.createElement("canvas");
+    return !!(window.WebGLRenderingContext&&(c.getContext("webgl")||c.getContext("experimental-webgl")));
+  }catch(_){ return false; }
+}
+function goFallback(){
+  document.body.classList.add("fallback");
+  const s=document.getElementById("stage"); if(s) s.remove();
+  pBtns.forEach(b=>{ b.disabled=true; b.removeAttribute("aria-expanded");
+    b.removeAttribute("style"); b.parentElement.removeAttribute("style"); });
+}
+
+function Spring(v,k,d){ this.x=v; this.v=0; this.t=v; this.k=k; this.d=d; }
+Spring.prototype.step=function(dt){
+  if(REDUCE){ this.x=this.t; this.v=0; return this.x; }
+  const n=Math.min(4,Math.ceil(dt/0.012))||1, h=dt/n;
+  for(let i=0;i<n;i++){ const a=this.k*(this.t-this.x)-this.d*this.v; this.v+=a*h; this.x+=this.v*h; }
+  return this.x;
+};
+
+let renderer,scene,camera,clock,prints=[],hazeGeo,haze,safeLight;
+const PW=512;
+const caption=document.getElementById("caption");
+const plate=document.getElementById("plate");
+let downIdx=-1, focusIdx=0;
+
+function linearize(){
+  scene.traverse(o=>{
+    if(o.isLight&&o.color) o.color.convertSRGBToLinear();
+    if(!o.isMesh&&!o.isPoints) return;
+    const ms=Array.isArray(o.material)?o.material:[o.material];
+    for(const m of ms){
+      if(m&&m.color&&!m.userData._l){ m.color.convertSRGBToLinear(); m.userData._l=true; }
+      if(m&&m.emissive&&!m.userData._e){ m.emissive.convertSRGBToLinear(); m.userData._e=true; }
+    }
+  });
+}
+
+function init(){
+  renderer=new THREE.WebGLRenderer({canvas:document.getElementById("gl"),antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+  renderer.setSize(innerWidth,innerHeight,false);
+  renderer.outputEncoding=THREE.sRGBEncoding;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure=1.0;
+
+  scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x0A0304);
+  scene.fog=new THREE.Fog(0x0A0304,5,18);
+  camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,0.1,60);
+  clock=new THREE.Clock();
+
+  buildLights(); buildRoom(); buildBench(); buildWire(); buildHaze();
+  linearize(); layout();
+  addEventListener("resize",layout,{passive:true});
+  document.body.classList.add("lit");
+  setCaption(0);
+  renderer.setAnimationLoop(tick);
+}
+
+function buildLights(){
+  scene.add(new THREE.AmbientLight(0x2A0C0C,0.85));
+  /* the safelight itself: one red source, high and behind the viewer */
+  safeLight=new THREE.PointLight(0xFF3B2E,7.0,11,2);
+  safeLight.position.set(-1.1,3.0,2.2);
+  scene.add(safeLight);
+  /* a second, dimmer bounce so the far side of the prints isn't pure black */
+  const bounce=new THREE.PointLight(0xB8342A,2.2,8,2);
+  bounce.position.set(2.0,1.4,1.4);
+  scene.add(bounce);
+}
+
+function buildRoom(){
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(50,50),
+    new THREE.MeshStandardMaterial({color:0x120607,roughness:0.9}));
+  floor.rotation.x=-Math.PI/2; scene.add(floor);
+  const wall=new THREE.MeshStandardMaterial({color:0x160809,roughness:0.96});
+  const back=new THREE.Mesh(new THREE.PlaneGeometry(24,8),wall);
+  back.position.set(0,4,-3.4); scene.add(back);
+}
+
+/* bench, three trays, enlarger — the furniture that makes it a darkroom */
+function buildBench(){
+  const wood=new THREE.MeshStandardMaterial({color:0x241214,roughness:0.85});
+  const bench=new THREE.Mesh(new THREE.BoxGeometry(4.6,0.10,1.3),wood);
+  bench.position.set(0,0.86,-1.5); scene.add(bench);
+  for(const x of [-2.0,2.0]){
+    const leg=new THREE.Mesh(new THREE.BoxGeometry(0.10,0.86,0.10),wood);
+    leg.position.set(x,0.43,-1.5); scene.add(leg);
+  }
+
+  /* developer, stop, fix */
+  const trayMat=new THREE.MeshStandardMaterial({color:0x2C1418,roughness:0.55});
+  const fluidMat=new THREE.MeshStandardMaterial({
+    color:0x1A0A0C, roughness:0.12, metalness:0.35 });
+  [-1.35,-0.1,1.15].forEach((x,i)=>{
+    const tray=new THREE.Mesh(new THREE.BoxGeometry(1.05,0.09,0.78),trayMat);
+    tray.position.set(x,0.955,-1.5); scene.add(tray);
+    const fluid=new THREE.Mesh(new THREE.PlaneGeometry(0.94,0.68),fluidMat);
+    fluid.rotation.x=-Math.PI/2; fluid.position.set(x,0.995,-1.5); scene.add(fluid);
+  });
+
+  /* enlarger: column, head, and its own small warm lamp */
+  const metal=new THREE.MeshStandardMaterial({color:0x2E2224,roughness:0.5,metalness:0.6});
+  const base=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.06,0.55),metal);
+  base.position.set(-2.0,0.94,-1.55); scene.add(base);
+  const col=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,1.5,12),metal);
+  col.position.set(-2.22,1.7,-1.7); scene.add(col);
+  const head=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.30,0.34),metal);
+  head.position.set(-2.05,2.15,-1.62); scene.add(head);
+  const lens=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.075,0.12,14),metal);
+  lens.position.set(-2.05,1.96,-1.62); scene.add(lens);
+}
+
+/* the wire, its pegs, and the prints */
+function buildWire(){
+  const n = PRINTS.length;
+  /* one wire looks right up to about five prints; past that it runs off both
+     sides of the frame, so they get strung in two rows instead */
+  const rows = n > 5 ? 2 : 1;
+  const perRow = Math.ceil(n / rows);
+  const PRINT_H = rows > 1 ? 0.62 : 0.78;
+  const gap = 0.13;
+
+  const wireMat = new THREE.MeshStandardMaterial({
+    color: 0x4A3436, roughness: 0.7, metalness: 0.4 });
+
+  for (let r = 0; r < rows; r++){
+    const wireY = rows > 1 ? (2.62 - r * 0.94) : 2.05;
+    const wireZ = 0.15 - r * 0.18;   // the back row sits slightly further off
+
+    const wire = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.008, 0.008, 8.6, 8), wireMat);
+    wire.rotation.z = Math.PI / 2;
+    wire.position.set(0, wireY, wireZ);
+    scene.add(wire);
+
+    const idx0 = r * perRow, idx1 = Math.min(n, idx0 + perRow);
+    /* lay the row out by measured width so mixed portrait/landscape prints
+       sit evenly rather than on a fixed pitch */
+    let widths = [], total = 0;
+    for (let i = idx0; i < idx1; i++){
+      const w = PRINT_H * (PRINTS[i].aspect || 1);
+      widths.push(w); total += w + gap;
+    }
+    total -= gap;
+    let cursor = -total / 2;
+
+    for (let i = idx0; i < idx1; i++){
+      const k = i - idx0;
+      const w = widths[k];
+      const x = cursor + w / 2;
+      cursor += w + gap;
+      const p = PRINTS[i];
+      const sag = -Math.cos((x / Math.max(0.001, total / 2)) * 1.15) * 0.045;
+
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(PW * (p.aspect || 1)); cv.height = PW;
+      const cx = cv.getContext("2d");
+      const tex = new THREE.CanvasTexture(cv);
+      tex.encoding = THREE.sRGBEncoding;
+      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+      const paper = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.92 });
+      const back  = new THREE.MeshStandardMaterial({ color: 0xB8A9A2, roughness: 0.95 });
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, PRINT_H, 0.006),
+        [back, back, back, back, paper, back]);
+      mesh.position.set(x, wireY - 0.05 - PRINT_H / 2 + sag, wireZ);
+      mesh.rotation.z = (Math.random() - 0.5) * 0.045;
+      scene.add(mesh);
+
+      const peg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.09, 0.028),
+        new THREE.MeshStandardMaterial({ color: 0x8A6A55, roughness: 0.8 }));
+      peg.position.set(x, wireY - 0.015, wireZ + 0.012);
+      scene.add(peg);
+
+      const rec = {
+        data: p, mesh, peg, ctx: cx, tex, canvas: cv,
+        img: null, dev: new Spring(0, 42, 11), lift: new Spring(0, 110, 19),
+        homeY: mesh.position.y, homeX: x, homeZ: wireZ, w, h: PRINT_H,
+        el: pBtns[i].parentElement, btn: pBtns[i], painted: -1
+      };
+      prints.push(rec);
+
+      if (p.src){
+        const im = new Image();
+        im.onload = () => { rec.img = im; rec.painted = -1; };
+        im.onerror = () => { console.warn("[darkroom] print failed to load:", p.src); };
+        im.src = p.src;
+      }
+      paintPrint(rec, 0);
+    }
+  }
+}
+
+/* d = 0 blank sheet, 1 fully developed. A print comes up midtones-first
+   and gains contrast, so this fades the image in under a lifting grey veil
+   rather than just ramping opacity. */
+function paintPrint(rec,d){
+  const {ctx,canvas}=rec, W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+  const g=ctx.createLinearGradient(0,0,W*0.6,H);
+  g.addColorStop(0,"#E8E2DA"); g.addColorStop(1,"#D6CEC4");
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+
+  if(rec.img && d>0.001){
+    ctx.save();
+    ctx.globalAlpha=Math.min(1,d*1.15);
+    const s=Math.max(W/rec.img.width,H/rec.img.height);
+    const iw=rec.img.width*s, ih=rec.img.height*s;
+    ctx.drawImage(rec.img,(W-iw)/2,(H-ih)/2,iw,ih);
+    ctx.restore();
+    /* the veil that lifts as contrast builds */
+    ctx.fillStyle="rgba(150,142,132,"+((1-d)*0.85).toFixed(3)+")";
+    ctx.fillRect(0,0,W,H);
+  } else if(!rec.img){
+    /* an undeveloped sheet still shows the faintest ghost of nothing */
+    ctx.fillStyle="rgba(120,110,104,"+(0.05+d*0.06).toFixed(3)+")";
+    ctx.fillRect(0,0,W,H);
+  }
+
+  /* white border, like a real enlarger easel leaves */
+  ctx.strokeStyle="rgba(255,252,246,.9)"; ctx.lineWidth=Math.round(W*0.035);
+  ctx.strokeRect(ctx.lineWidth/2,ctx.lineWidth/2,W-ctx.lineWidth,H-ctx.lineWidth);
+  ctx.strokeStyle="rgba(60,50,46,.25)"; ctx.lineWidth=1.5;
+  ctx.strokeRect(1,1,W-2,H-2);
+  rec.tex.needsUpdate=true;
+}
+
+function buildHaze(){
+  const N=150,pos=new Float32Array(N*3);
+  for(let i=0;i<N;i++){
+    pos[i*3]=(Math.random()-.5)*7;
+    pos[i*3+1]=Math.random()*3.0;
+    pos[i*3+2]=(Math.random()-.5)*3.5;
+  }
+  hazeGeo=new THREE.BufferGeometry();
+  hazeGeo.setAttribute("position",new THREE.BufferAttribute(pos,3));
+  haze=new THREE.Points(hazeGeo,new THREE.PointsMaterial({
+    color:0xFF6A55,size:0.014,sizeAttenuation:true,transparent:true,
+    opacity:0.16,depthWrite:false,blending:THREE.AdditiveBlending}));
+  scene.add(haze);
+}
+
+let camBase=new THREE.Vector3(),camLook=new THREE.Vector3(),liftCenter=new THREE.Vector3();
+const look={x:0,y:0,tx:0,ty:0};
+
+function layout(){
+  renderer.setSize(innerWidth,innerHeight,false);
+  const aspect=innerWidth/Math.max(1,innerHeight);
+  camera.aspect=aspect; camera.updateProjectionMatrix();
+  const dist=4.9*Math.min(1.8,Math.max(1,1.15/aspect));
+  camBase.set(0,1.95,dist);
+  camLook.set(0,1.80,0);
+  camera.position.copy(camBase); camera.lookAt(camLook);
+  camera.getWorldDirection(liftCenter);
+  liftCenter.multiplyScalar(Math.max(1.5,1.35/aspect)).add(camera.position);
+  scene.fog.near=dist*0.85; scene.fog.far=dist*3.6;
+}
+
+function setCaption(i){
+  focusIdx=i;
+  const p=PRINTS[i];
+  caption.innerHTML="";
+  const a=document.createElement("span");
+  a.textContent=p.title;
+  if(!p.src) a.className="undev";
+  const b=document.createElement("span");
+  b.textContent="  ·  "+p.meta; b.style.color="var(--muted)";
+  caption.append(a,b);
+}
+
+function showPlate(i){
+  const p=PRINTS[i];
+  plate.innerHTML="";
+  const t=document.createElement("p"); t.className="p-title"; t.textContent=p.title;
+  const m=document.createElement("p"); m.className="p-meta"; m.textContent=p.meta;
+  const n=document.createElement("p"); n.className="p-note"; n.textContent=p.note;
+  plate.append(t,m,n);
+  plate.classList.add("show");
+}
+
+function takeDown(i){
+  if(downIdx===i) return;
+  if(downIdx>=0) pBtns[downIdx].setAttribute("aria-expanded","false");
+  downIdx=i;
+  prints.forEach((pr,k)=>{
+    pr.lift.t=(k===i)?1:0;
+    if(k===i) pr.dev.t=1;
+    if(REDUCE){ pr.lift.x=pr.lift.t; pr.lift.v=0; }
+  });
+  pBtns[i].setAttribute("aria-expanded","true");
+  setCaption(i); showPlate(i);
+}
+function putBack(){
+  if(downIdx<0) return;
+  pBtns[downIdx].setAttribute("aria-expanded","false");
+  downIdx=-1;
+  prints.forEach(pr=>{ pr.lift.t=0; if(REDUCE){ pr.lift.x=0; pr.lift.v=0; } });
+  plate.classList.remove("show");
+}
+
+let elapsed=0;
+const projV=new THREE.Vector3(),projU=new THREE.Vector3(),camUp=new THREE.Vector3();
+const q0=new THREE.Quaternion(),q1=new THREE.Quaternion();
+const facer=new THREE.Object3D();
+
+function tick(){
+  const dt=Math.min(0.05,clock.getDelta());
+  elapsed+=dt;
+
+  prints.forEach((pr,i)=>{
+    const d=pr.dev.step(dt);
+    const l=THREE.MathUtils.clamp(pr.lift.step(dt),0,1.04);
+
+    /* only repaint when the development actually moved — this is a canvas
+       upload per print per frame otherwise */
+    const q=Math.round(d*24);
+    if(q!==pr.painted){ paintPrint(pr,Math.min(1,d)); pr.painted=q; }
+
+    /* hanging: a slow sway, damped to nothing once it's in hand */
+    const sway=REDUCE?0:Math.sin(elapsed*0.6+i*1.7)*0.012*(1-l);
+    q0.setFromEuler(new THREE.Euler(0,0,sway+(i%2?0.012:-0.012)*(1-l)));
+
+    if(l>0.0005){
+      facer.position.copy(liftCenter);
+      facer.up.copy(camera.up);
+      facer.lookAt(camera.position);
+      q1.copy(facer.quaternion);
+      q0.slerp(q1,l);
+      pr.mesh.position.set(
+        pr.homeX+(liftCenter.x-pr.homeX)*l,
+        pr.homeY+(liftCenter.y-pr.homeY)*l,
+        pr.homeZ+(liftCenter.z-pr.homeZ)*l
+      );
+    } else {
+      pr.mesh.position.set(pr.homeX,pr.homeY+sway*0.3,pr.homeZ);
+    }
+    pr.mesh.quaternion.copy(q0);
+    pr.peg.visible=l<0.25;
+  });
+
+  if(!REDUCE){
+    const p=hazeGeo.attributes.position.array;
+    for(let i=0;i<p.length;i+=3){
+      p[i+1]+=dt*0.03;
+      p[i]+=Math.sin(elapsed*0.22+i)*dt*0.013;
+      if(p[i+1]>3.2) p[i+1]=0.05;
+    }
+    hazeGeo.attributes.position.needsUpdate=true;
+    /* the safelight breathes, very slightly */
+    safeLight.intensity=7.0+Math.sin(elapsed*1.4)*0.35;
+
+    look.x+=(look.tx-look.x)*(1-Math.exp(-2.2*dt));
+    look.y+=(look.ty-look.y)*(1-Math.exp(-2.2*dt));
+    camera.position.set(camBase.x+look.x*0.40,camBase.y+look.y*0.18,camBase.z);
+    camera.lookAt(camLook.x+look.x*0.12,camLook.y+look.y*0.06,camLook.z);
+  }
+
+  project();
+  renderer.render(scene,camera);
+}
+
+function project(){
+  const W=innerWidth,H=innerHeight;
+  camUp.setFromMatrixColumn(camera.matrixWorld,1).normalize();
+  prints.forEach((pr,i)=>{
+    pr.mesh.getWorldPosition(projV);
+    projU.copy(projV).addScaledVector(camUp,pr.h/2);
+    projV.project(camera); projU.project(camera);
+    const behind=projV.z>1;
+    const x=(projV.x*0.5+0.5)*W,y=(-projV.y*0.5+0.5)*H;
+    const half=Math.max(20,Math.abs((-projU.y*0.5+0.5)*H-y));
+    const hPx=half*2, wPx=hPx*(pr.w/pr.h);
+    pr.el.style.width=wPx+"px"; pr.el.style.height=hPx+"px";
+    pr.el.style.transform="translate("+(x-wPx/2).toFixed(1)+"px,"+(y-hPx/2).toFixed(1)+"px)";
+    pr.el.style.zIndex=String(Math.round((1-projV.z)*10000));
+    const hidden=behind||(downIdx>=0&&i!==downIdx);
+    pr.btn.tabIndex=hidden?-1:0;
+    pr.btn.style.display=hidden?"none":"";
+  });
+}
+
+pBtns.forEach((b,i)=>{
+  const develop=()=>{ prints[i].dev.t=1; if(downIdx<0) setCaption(i); };
+  const rest=()=>{ if(downIdx!==i) prints[i].dev.t=0; };
+  b.addEventListener("mouseenter",develop);
+  b.addEventListener("mouseleave",rest);
+  b.addEventListener("focus",develop);
+  b.addEventListener("blur",rest);
+  b.addEventListener("click",()=>{ downIdx===i?putBack():takeDown(i); });
+});
+
+addEventListener("pointermove",e=>{
+  look.tx=(e.clientX/innerWidth-0.5)*2;
+  look.ty=(e.clientY/innerHeight-0.5)*2;
+},{passive:true});
+
+addEventListener("keydown",e=>{
+  if(e.key==="Escape"){ if(downIdx>=0){ const i=downIdx; putBack(); pBtns[i].focus(); } return; }
+  if(e.key==="ArrowRight"){ e.preventDefault(); pBtns[(focusIdx+1)%PRINTS.length].focus(); }
+  if(e.key==="ArrowLeft"){ e.preventDefault(); pBtns[(focusIdx-1+PRINTS.length)%PRINTS.length].focus(); }
+});
+
+function boot(){
+  if(!window.THREE||!webglOK()){ goFallback(); return; }
+  try{ init(); }catch(err){ console.error("[darkroom] init failed:",err); goFallback(); }
+}
+if(document.fonts&&document.fonts.ready){
+  let d=false; const go=()=>{ if(!d){ d=true; boot(); } };
+  document.fonts.ready.then(go); setTimeout(go,2500);
+} else boot();
+</script>
+</body>
+</html>

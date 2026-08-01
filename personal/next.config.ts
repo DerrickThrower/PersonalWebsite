@@ -1,7 +1,18 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  async rewrites() {
+    return {
+      // `beforeFiles` runs ahead of filesystem and app-router matching, so this
+      // wins over any `app/page.tsx`. The URL stays "/" — this is a rewrite,
+      // not a redirect, so nothing bounces to /crate.html in the address bar.
+      beforeFiles: [
+        { source: "/", destination: "/crate.html" },
+      ],
+      afterFiles: [],
+      fallback: [],
+    };
+  },
 };
 
 export default nextConfig;

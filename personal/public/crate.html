@@ -1,0 +1,1840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Derrick Thrower — The Record Crate</title>
+<meta name="description" content="Derrick Thrower — first-generation Computer Science student at UC Irvine building agentic AI systems, a course planner used by 16,000 students, and software for nonprofits." />
+<meta name="color-scheme" content="dark" />
+<meta property="og:title" content="Derrick Thrower — The Record Crate" />
+<meta property="og:description" content="First-gen CS @ UC Irvine — building agentic AI systems." />
+<meta property="og:type" content="website" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+
+<style>
+/* ============================================================
+   THE RECORD CRATE — Derrick Thrower
+   Palette, type scale, layout. Everything else is in the script.
+   ============================================================ */
+:root{
+  --bg:#0E0E10;
+  --surface:#1A1A1E;
+  --ink:#EDEDE8;
+  --muted:#8A8A82;
+  --spot:#FFE9C7;
+  --accent:#C8A24B;
+
+  --display:"Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --body:"Newsreader", Georgia, "Times New Roman", serif;
+  --mono:"Space Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --pad: clamp(16px, 3.2vw, 34px);
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--body);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  overflow:hidden;
+  overscroll-behavior:none;
+}
+body.fallback{ overflow:auto; }
+
+a{ color:inherit; }
+
+/* ---------- utility ---------- */
+.sr{
+  position:absolute; width:1px; height:1px;
+  padding:0; margin:-1px; overflow:hidden;
+  clip:rect(0 0 0 0); clip-path:inset(50%);
+  white-space:nowrap; border:0;
+}
+.tracked{ letter-spacing:.16em; text-transform:uppercase; }
+
+/* ---------- stage ---------- */
+#stage{ position:fixed; inset:0; }
+body.fallback #stage{ display:none; }
+#gl{ display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
+#gl.dragging{ cursor:grabbing; }
+#gl.pulled{ cursor:default; }
+
+/* vignette + grain sit above the canvas, below the UI */
+#vignette{
+  position:fixed; inset:0; pointer-events:none; z-index:2;
+  background:
+    radial-gradient(120% 90% at 50% 34%, rgba(0,0,0,0) 34%, rgba(0,0,0,.42) 72%, rgba(0,0,0,.82) 100%);
+  mix-blend-mode:multiply;
+}
+#grain{
+  position:fixed; inset:-50%; pointer-events:none; z-index:3;
+  opacity:.018;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+}
+
+/* curtain: spotlight fade-up on load */
+#curtain{
+  position:fixed; inset:0; z-index:60; background:var(--bg);
+  pointer-events:none; opacity:1; transition:opacity 900ms ease 120ms;
+}
+body.lit #curtain{ opacity:0; }
+
+/* ---------- top bar ---------- */
+#topbar{
+  position:fixed; z-index:20; top:0; left:0; right:0;
+  display:flex; align-items:baseline; justify-content:space-between; gap:1rem;
+  padding:var(--pad);
+  padding-top:max(var(--pad), env(safe-area-inset-top));
+  pointer-events:none;
+}
+#topbar > *{ pointer-events:auto; }
+.label-mark{ display:flex; align-items:baseline; gap:.7rem; flex-wrap:wrap; }
+.label-name{
+  font-family:var(--display); font-weight:700;
+  font-size:clamp(15px,2.1vw,20px); letter-spacing:.13em; text-transform:uppercase;
+  margin:0; line-height:1;
+}
+.label-sub{
+  font-family:var(--mono); font-size:11px; color:var(--muted);
+  letter-spacing:.11em; text-transform:uppercase;
+}
+nav.top-nav{ display:flex; gap:.35rem; }
+.navbtn{
+  font-family:var(--mono); font-size:11px; letter-spacing:.13em; text-transform:uppercase;
+  color:var(--muted); background:none; border:1px solid transparent;
+  padding:.5em .8em; border-radius:2px; cursor:pointer;
+  transition:color 180ms ease, border-color 180ms ease;
+}
+.navbtn:hover,.navbtn[aria-expanded="true"]{ color:var(--ink); border-color:rgba(200,162,75,.35); }
+.navbtn:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; color:var(--ink); }
+
+/* ---------- caption / hint under the spotlight ---------- */
+#footline{
+  position:fixed; z-index:20; left:0; right:0;
+  bottom:max(var(--pad), env(safe-area-inset-bottom));
+  padding:0 var(--pad);
+  display:flex; flex-direction:column; align-items:center; gap:.85rem;
+  pointer-events:none; text-align:center;
+}
+#caption{
+  font-family:var(--mono); font-size:clamp(11px,1.5vw,13px);
+  letter-spacing:.18em; text-transform:uppercase; color:var(--ink);
+  display:flex; align-items:center; gap:.7em; flex-wrap:wrap; justify-content:center;
+  transition:opacity 260ms ease;
+}
+#caption .cat{ color:var(--accent); }
+#caption .sep{ color:var(--muted); }
+#caption .org{ color:var(--ink); }
+#caption .pressing{
+  font-size:.8em; border:1px solid rgba(200,162,75,.5); color:var(--accent);
+  padding:.25em .5em; border-radius:1px;
+}
+#hint{
+  font-family:var(--mono); font-size:11px; letter-spacing:.13em; text-transform:uppercase;
+  color:var(--muted); opacity:.9; transition:opacity 700ms ease;
+}
+#hint.gone{ opacity:0; }
+
+/* browse arrows — always in the DOM, prominent on touch */
+#browse{ display:flex; gap:.4rem; pointer-events:auto; }
+.arrowbtn{
+  font-family:var(--mono); font-size:14px; line-height:1;
+  width:44px; height:36px; display:grid; place-items:center;
+  color:var(--muted); background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.08); border-radius:2px; cursor:pointer;
+  transition:color 160ms ease, border-color 160ms ease;
+}
+.arrowbtn:hover{ color:var(--ink); border-color:rgba(200,162,75,.4); }
+.arrowbtn:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
+body.pulled #browse{ visibility:hidden; }
+
+/* ---------- the crate list: the real, accessible content ---------- */
+/* In WebGL mode each <li> is positioned over its record by the renderer. */
+#crate-list{
+  position:fixed; inset:0; z-index:10; margin:0; padding:0; list-style:none;
+  pointer-events:none;
+}
+#crate-list li{ position:absolute; left:0; top:0; will-change:transform; }
+.rec-btn{
+  display:block; width:100%; height:100%; padding:0; margin:0;
+  background:none; border:1px solid transparent; border-radius:3px;
+  cursor:pointer; pointer-events:auto; color:inherit; font:inherit;
+  transition:border-color 160ms ease, box-shadow 160ms ease;
+}
+.rec-btn:hover{ border-color:rgba(200,162,75,.28); }
+.rec-btn:focus-visible{
+  outline:2px solid var(--accent); outline-offset:3px;
+  box-shadow:0 0 0 7px rgba(200,162,75,.10);
+}
+body.pulled .rec-btn[data-inert="true"]{ pointer-events:none; opacity:0; }
+
+/* ---------- liner notes overlay (anchored to the flipped record) ---------- */
+#liner{
+  position:fixed; z-index:14; left:0; top:0;
+  transform:translate(-50%,-50%);
+  background:linear-gradient(168deg,#141317 0%,#101014 55%,#0C0C0F 100%);
+  border:1px solid rgba(200,162,75,.16);
+  border-radius:2px;
+  padding:2em 2.1em;
+  overflow:auto; -webkit-overflow-scrolling:touch;
+  opacity:0; visibility:hidden;
+  transition:opacity 240ms ease;
+  pointer-events:none;
+  box-shadow:0 30px 80px rgba(0,0,0,.7);
+}
+#liner.show{ opacity:1; visibility:visible; pointer-events:auto; }
+#liner .ln-head{
+  display:flex; justify-content:space-between; align-items:baseline; gap:1em;
+  font-family:var(--mono); font-size:.78em; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--muted);
+  padding-bottom:.9em; border-bottom:1px solid rgba(200,162,75,.22);
+}
+#liner .ln-head .cat{ color:var(--accent); }
+#liner h3{
+  font-family:var(--display); font-weight:700;
+  font-size:1.9em; line-height:1.08; letter-spacing:-.01em;
+  margin:.85em 0 .1em;
+}
+#liner .ln-org{
+  font-family:var(--display); font-weight:500; font-size:1.05em;
+  color:var(--accent); letter-spacing:.01em; margin:0 0 .9em;
+}
+#liner dl{ margin:0 0 1.2em; display:grid; grid-template-columns:auto 1fr; gap:.32em 1.2em; }
+#liner dt{
+  font-family:var(--mono); font-size:.72em; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--muted); padding-top:.25em;
+}
+#liner dd{ margin:0; font-family:var(--mono); font-size:.8em; color:var(--ink); line-height:1.5; }
+#liner p.ln-notes{
+  font-family:var(--body); font-size:1.02em; line-height:1.62; color:#DAD9D2;
+  margin:0 0 1.3em;
+}
+#liner .ln-stack{ display:flex; flex-wrap:wrap; gap:.4em; }
+#liner .ln-stack span{
+  font-family:var(--mono); font-size:.68em; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--muted); border:1px solid rgba(255,255,255,.12);
+  padding:.42em .7em; border-radius:1px;
+}
+#liner .ln-foil{
+  margin-top:1.2em; font-family:var(--mono); font-size:.7em;
+  letter-spacing:.2em; text-transform:uppercase; color:var(--accent);
+}
+
+/* ---------- pulled-state controls ---------- */
+#pullbar{
+  position:fixed; z-index:22; left:50%; transform:translateX(-50%);
+  bottom:calc(max(var(--pad), env(safe-area-inset-bottom)) + 4px);
+  display:flex; gap:.4rem; opacity:0; visibility:hidden;
+  transition:opacity 220ms ease;
+}
+body.pulled #pullbar{ opacity:1; visibility:visible; }
+.pullbtn{
+  font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--muted); background:rgba(14,14,16,.75); backdrop-filter:blur(6px);
+  border:1px solid rgba(255,255,255,.1); padding:.7em 1.1em; border-radius:2px; cursor:pointer;
+  transition:color 160ms ease, border-color 160ms ease;
+}
+.pullbtn:hover{ color:var(--ink); border-color:rgba(200,162,75,.45); }
+.pullbtn:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
+
+/* ---------- about / contact sheets ---------- */
+.sheet{
+  position:fixed; z-index:40; inset:auto var(--pad) auto auto;
+  top:calc(var(--pad) + 46px);
+  width:min(30rem, calc(100vw - 2*var(--pad)));
+  background:linear-gradient(170deg,#151419,#0F0F12);
+  border:1px solid rgba(200,162,75,.18); border-radius:2px;
+  padding:1.8rem 1.9rem;
+  box-shadow:0 26px 70px rgba(0,0,0,.75);
+  opacity:0; visibility:hidden; transform:translateY(-6px);
+  transition:opacity 200ms ease, transform 200ms ease;
+}
+.sheet[data-open="true"]{ opacity:1; visibility:visible; transform:none; }
+.sheet h2{
+  font-family:var(--mono); font-size:11px; letter-spacing:.2em; text-transform:uppercase;
+  color:var(--accent); margin:0 0 1rem; font-weight:400;
+}
+.sheet p{ font-family:var(--body); font-size:1rem; line-height:1.65; color:#D8D7D0; margin:0 0 1rem; }
+.sheet .mugshot{
+  float:left; width:76px; height:76px; margin:.15rem 1rem .4rem 0;
+  border-radius:2px; object-fit:cover;
+  border:1px solid rgba(200,162,75,.28);
+  filter:grayscale(.35) contrast(1.04);
+}
+.sheet p:last-child{ margin-bottom:0; }
+.sheet ul{ list-style:none; margin:0; padding:0; display:grid; gap:.55rem; }
+.sheet ul a{
+  font-family:var(--mono); font-size:12px; letter-spacing:.1em;
+  color:var(--ink); text-decoration:none;
+  display:flex; justify-content:space-between; gap:1rem;
+  padding:.6em 0; border-bottom:1px solid rgba(255,255,255,.07);
+}
+.sheet ul a:hover{ color:var(--accent); }
+.sheet ul a:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
+.sheet ul a .k{ color:var(--muted); text-transform:uppercase; }
+
+/* ---------- non-WebGL fallback ---------- */
+#fallback-note{ display:none; }
+body.fallback{ font-family:var(--body); }
+body.fallback #vignette,
+body.fallback #grain,
+body.fallback #curtain,
+body.fallback #footline,
+body.fallback #liner,
+body.fallback #pullbar{ display:none; }
+body.fallback #topbar{ position:static; }
+body.fallback #fallback-note{
+  display:block; max-width:62rem; margin:0 auto; padding:0 var(--pad);
+  font-family:var(--mono); font-size:11px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--muted);
+}
+body.fallback{ padding-top:1rem; }
+body.fallback main > h2.sr{   /* must out-specify the .sr un-hiding rule below */
+  max-width:62rem; margin:2.2rem auto .2rem; padding:0 var(--pad);
+  font-family:var(--mono); font-size:11px; font-weight:400;
+  letter-spacing:.2em; text-transform:uppercase; color:var(--accent);
+}
+body.fallback #crate-list{
+  position:static; display:grid; gap:.6rem;
+  max-width:62rem; margin:1rem auto 5rem; padding:0 var(--pad);
+  pointer-events:auto;
+}
+body.fallback #crate-list li{ position:static; }
+body.fallback .rec-btn{
+  cursor:default; height:auto; text-align:left;
+  border:1px solid rgba(255,255,255,.08); padding:1.6rem 1.5rem;
+  background:linear-gradient(170deg,#151419,#101013);
+}
+body.fallback .sr{
+  position:static; width:auto; height:auto; margin:0; overflow:visible;
+  clip:auto; clip-path:none; white-space:normal;
+}
+body.fallback .rec-cat{
+  display:block; font-family:var(--mono); font-size:11px; letter-spacing:.2em; color:var(--accent);
+}
+body.fallback .rec-title{
+  display:block; font-family:var(--display); font-weight:700; font-size:1.4rem;
+  line-height:1.15; margin-top:.5rem;
+}
+body.fallback .rec-org{
+  display:block; font-family:var(--display); font-weight:500; color:var(--accent); margin-top:.2rem;
+}
+body.fallback .rec-meta{
+  display:block; font-family:var(--mono); font-size:11px; letter-spacing:.1em;
+  color:var(--muted); margin-top:.55rem;
+}
+body.fallback .rec-notes{
+  font-family:var(--body); font-size:1.02rem; line-height:1.62; color:#D8D7D0; margin:.9rem 0 0;
+}
+body.fallback .rec-stack{
+  display:block; font-family:var(--mono); font-size:11px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--muted); margin-top:.85rem;
+}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms !important; animation-iteration-count:1 !important;
+    transition-duration:.001ms !important; scroll-behavior:auto !important;
+  }
+  #curtain{ transition:none; }
+}
+
+/* ---------- narrow screens ---------- */
+@media (max-width: 640px){
+  #topbar{ flex-direction:column; align-items:flex-start; gap:.6rem; }
+  nav.top-nav{ margin-left:-.8em; }
+  .sheet{ left:var(--pad); right:var(--pad); width:auto; top:auto; bottom:var(--pad); }
+}
+</style>
+</head>
+<body>
+
+<!-- ============ top bar ============ -->
+<header id="topbar">
+  <div class="label-mark">
+    <h1 class="label-name">Derrick Thrower</h1>
+    <span class="label-sub" id="tagline">First-gen CS @ UC Irvine — building agentic AI systems</span>
+  </div>
+  <nav class="top-nav" aria-label="Site">
+    <button class="navbtn" id="btn-about"   aria-expanded="false" aria-controls="sheet-about">About</button>
+    <button class="navbtn" id="btn-contact" aria-expanded="false" aria-controls="sheet-contact">Contact</button>
+  </nav>
+</header>
+
+<!-- ============ 3D stage ============ -->
+<div id="stage" aria-hidden="true">
+  <canvas id="gl"></canvas>
+</div>
+<div id="vignette" aria-hidden="true"></div>
+<div id="grain" aria-hidden="true"></div>
+<div id="curtain" aria-hidden="true"></div>
+
+<!-- ============ the records: real content, one <li> per role ============
+     In WebGL mode each <li> is positioned over its 3D record and the inner
+     text is visually hidden but exposed to assistive tech. With WebGL off the
+     same markup restyles into a plain readable list. ============ -->
+<main>
+  <p id="fallback-note">WebGL unavailable — showing the plain text edition.</p>
+  <h2 class="sr">Roles</h2>
+  <ul id="crate-list"><!-- built from RECORDS --></ul>
+</main>
+
+<!-- ============ liner notes overlay (visual mirror of the focused <li>) ============ -->
+<div id="liner" aria-hidden="true"></div>
+
+<!-- ============ footer caption + hint ============ -->
+<div id="footline">
+  <div id="browse">
+    <button class="arrowbtn" id="btn-prev" aria-label="Previous record">&#8592;</button>
+    <button class="arrowbtn" id="btn-next" aria-label="Next record">&#8594;</button>
+  </div>
+  <p id="caption" aria-hidden="true"></p>
+  <p id="hint">drag or &#8592; &#8594; to browse &middot; click to pull</p>
+</div>
+
+<div id="pullbar">
+  <button class="pullbtn" id="btn-flip">Flip</button>
+  <button class="pullbtn" id="btn-close">Esc &middot; back to crate</button>
+</div>
+
+<!-- ============ sheets ============ -->
+<section class="sheet" id="sheet-about" data-open="false" aria-labelledby="about-h">
+  <h2 id="about-h">About the label</h2>
+  <img class="mugshot" src="crate-art/derrick.jpg" width="96" height="96" alt="Derrick Thrower" />
+  <p>First-generation Computer Science student at UC Irvine who builds software that helps people — from a course planner used by half the campus to multi-agent AI systems.</p>
+  <p>Off the clock: hackathons, basketball, and new tech.</p>
+</section>
+
+<section class="sheet" id="sheet-contact" data-open="false" aria-labelledby="contact-h">
+  <h2 id="contact-h">Back cover credits</h2>
+  <ul id="contact-list"><!-- built from CONTACT --></ul>
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ==========================================================================
+   THE RECORD CRATE
+   --------------------------------------------------------------------------
+   EDIT CONTENT HERE. Everything below the DATA block is machinery.
+   ========================================================================== */
+
+/* ---------------------------- DATA ---------------------------- */
+
+/* Optional per-record sleeve photo:
+ *
+ *     art: "crate-art/antalmanac.png"
+ *
+ * Drop the file in `public/crate-art/` and reference it with that relative
+ * path — it resolves correctly at "/", at "/crate.html", and when this file
+ * is opened straight off disk. Square images look best (the sleeve is 1:1);
+ * anything else is centre-cropped to fill. The photo is scrimmed dark so the
+ * catalogue number and org still read over it. Omit `art` and the record
+ * keeps the procedural groove cover. */
+
+const RECORDS = [
+  {
+    cat: "DT-001",
+    title: "Software Engineer Intern",
+    org: "HireBuddy",
+    art: "crate-art/hirebuddy.png",
+    artStyle: "label",
+    kind: "Internship",
+    dates: "Jun 2026 – Present",
+    location: "San Francisco Bay Area",
+    notes: "Shipping full-stack features for an AI startup — building the product end to end, from interface to backend.",
+    stack: ["Full-stack", "AI product"],
+    limited: false
+  },
+  {
+    cat: "DT-002",
+    title: "Technical Lead",
+    org: "Commit the Change · UCI",
+    art: "crate-art/commit-the-change.svg",
+    artStyle: "emblem",
+    kind: "Student org · nonprofit tech",
+    dates: "Jun 2026 – Present",
+    location: "Irvine, CA",
+    notes: "Leading a student engineering team building software for a nonprofit. Project management and agile delivery on top of hands-on full-stack work.",
+    stack: ["Leadership", "Agile", "Full-stack"],
+    limited: false
+  },
+  {
+    cat: "DT-003",
+    title: "Full Stack Developer",
+    org: "Commit the Change · UCI",
+    art: "crate-art/commit-the-change.svg",
+    artStyle: "emblem",
+    kind: "Student org · nonprofit tech",
+    dates: "Oct 2025 – Jun 2026",
+    location: "Irvine, CA",
+    notes: "Built a management system for the Global Creation Foundation, a nonprofit focused on arts education in underserved communities — supporting programs that have reached 500+ students across 5 continents.",
+    stack: ["React", "Vite", "TypeScript", "Express", "PostgreSQL"],
+    limited: false
+  },
+  {
+    cat: "DT-004",
+    title: "Software Developer",
+    org: "AntAlmanac · UCI ICS Student Council",
+    art: "crate-art/antalmanac.png",
+    artStyle: "cover",
+    kind: "Open-source · student tooling",
+    dates: "Nov 2025 – Present",
+    location: "Irvine, CA",
+    notes: "Building AntAlmanac Planner, UCI's premier course discovery and planning tool — used by 16,000 Anteaters (roughly half the campus).",
+    stack: ["Next.js", "PostgreSQL"],
+    limited: true
+  },
+  {
+    cat: "DT-005",
+    title: "ICS Project Director",
+    org: "FUSION at UCI",
+    art: "crate-art/fusion-uci.svg",
+    artStyle: "emblem",
+    kind: "Student leadership",
+    dates: "May 2026 – Present",
+    location: "Irvine, CA",
+    notes: "Overseeing one of the largest software project programs at UCI. Previously an intern planning events for a 300+ member club.",
+    stack: ["Program leadership"],
+    limited: false
+  },
+  {
+    cat: "DT-006",
+    title: "Operations",
+    org: "Stealth Startup",
+    art: "crate-art/tabula-rasa.jpg",
+    artStyle: "cover",
+    kind: "Part-time",
+    dates: "Jul 2026 – Present",
+    location: "San Francisco Bay Area",
+    notes: "Working hands-on with robots — hardware troubleshooting and operations at an early-stage company.",
+    stack: ["Robotics", "Hardware"],
+    limited: false
+  }
+
+  /* ------------------------------------------------------------------
+     DERRICK — the hackathon record goes here. Uncomment, fill in the
+     specifics (which hackathons, what you built, what you won), and it
+     will appear in the crate automatically. `limited: true` gives it the
+     LIMITED PRESSING foil sticker on the sleeve.
+
+  ,{
+    cat: "DT-007",
+    title: "Hackathons",
+    org: "3× Winner",
+    kind: "Singles & B-sides",
+    dates: "2025 – Present",
+    location: "California",
+    notes: "Solo win at DiamondHacks 2025. <add the other two wins, what you built, and the stack.>",
+    stack: ["Agentic AI", "Full-stack"],
+    limited: true
+  }
+     ------------------------------------------------------------------ */
+];
+
+/* Set a value to null to hide that row. */
+const CONTACT = [
+  { k: "Email",    v: "throwerd@uci.edu",              href: "mailto:throwerd@uci.edu" },
+  { k: "LinkedIn", v: "linkedin.com/in/derrickthrower", href: "https://www.linkedin.com/in/derrickthrower/" },
+  { k: "GitHub",   v: "github.com/DerrickThrower",      href: "https://github.com/DerrickThrower" }
+];
+
+/* Alternate tagline, if you prefer it — swap into #tagline in the markup:
+   "3× hackathon winner. Builder of agent swarms and course-planning tools used by 16k students." */
+
+const PALETTE = {
+  bg:      0x0E0E10,
+  surface: 0x1A1A1E,
+  ink:     0xEDEDE8,
+  muted:   0x8A8A82,
+  spot:    0xFFE9C7,
+  accent:  0xC8A24B,
+  sleeve:  0x17171A,
+  crate:   0x1D1811,
+  card:    0x191712
+};
+const CSS = { ink:"#EDEDE8", muted:"#8A8A82", accent:"#C8A24B", sleeve:"#17171A" };
+
+/* ------------------------- DOM CONTENT ------------------------- */
+/* Built synchronously so the roles are in the accessibility tree and the
+   document outline regardless of whether WebGL ever initialises. */
+
+const listEl = document.getElementById("crate-list");
+const btns = [];
+
+RECORDS.forEach((r, i) => {
+  const li = document.createElement("li");
+  const b  = document.createElement("button");
+  b.className = "rec-btn";
+  b.type = "button";
+  b.dataset.i = String(i);
+  b.setAttribute("aria-expanded", "false");
+
+  const sr = document.createElement("span");
+  sr.className = "sr";
+  sr.innerHTML =
+    '<span class="rec-cat"></span>' +
+    '<span class="rec-title"></span>' +
+    '<span class="rec-org"></span>' +
+    '<span class="rec-meta"></span>' +
+    '<p class="rec-notes"></p>' +
+    '<span class="rec-stack"></span>';
+  sr.querySelector(".rec-cat").textContent   = r.cat + (r.limited ? " · Limited pressing" : "");
+  sr.querySelector(".rec-title").textContent = r.title;
+  sr.querySelector(".rec-org").textContent   = r.org;
+  sr.querySelector(".rec-meta").textContent  = [r.kind, r.dates, r.location].join(" · ");
+  sr.querySelector(".rec-notes").textContent = r.notes;
+  sr.querySelector(".rec-stack").textContent = "Stack: " + r.stack.join(", ");
+
+  b.appendChild(sr);
+  li.appendChild(b);
+  listEl.appendChild(li);
+  btns.push(b);
+});
+
+const contactList = document.getElementById("contact-list");
+CONTACT.forEach(c => {
+  if (!c || !c.v) return;
+  const li = document.createElement("li");
+  const a  = document.createElement("a");
+  a.href = c.href || "#";
+  if (/^https?:/.test(a.href)) { a.target = "_blank"; a.rel = "noopener noreferrer"; }
+  a.innerHTML = '<span class="k"></span><span class="v"></span>';
+  a.querySelector(".k").textContent = c.k;
+  a.querySelector(".v").textContent = c.v;
+  li.appendChild(a);
+  contactList.appendChild(li);
+});
+
+/* ---------------------------- SHEETS ---------------------------- */
+const sheets = {
+  about:   { btn: document.getElementById("btn-about"),   el: document.getElementById("sheet-about") },
+  contact: { btn: document.getElementById("btn-contact"), el: document.getElementById("sheet-contact") }
+};
+function setSheet(name, open){
+  Object.keys(sheets).forEach(k => {
+    const s = sheets[k];
+    const on = (k === name) && open;
+    s.el.dataset.open = String(on);
+    s.btn.setAttribute("aria-expanded", String(on));
+  });
+}
+Object.keys(sheets).forEach(k => {
+  sheets[k].btn.addEventListener("click", () => {
+    setSheet(k, sheets[k].el.dataset.open !== "true");
+  });
+});
+document.addEventListener("click", e => {
+  if (e.target.closest(".sheet") || e.target.closest(".navbtn")) return;
+  setSheet(null, false);
+});
+
+/* --------------------- REDUCED MOTION / WEBGL --------------------- */
+const mqReduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+let REDUCE = mqReduce.matches;
+mqReduce.addEventListener?.("change", e => { REDUCE = e.matches; });
+
+function webglOK(){
+  try {
+    const c = document.createElement("canvas");
+    return !!(window.WebGLRenderingContext &&
+      (c.getContext("webgl") || c.getContext("experimental-webgl")));
+  } catch (_) { return false; }
+}
+
+function goFallback(){
+  document.body.classList.add("fallback");
+  const stage = document.getElementById("stage");
+  if (stage) stage.remove();
+  btns.forEach(b => {
+    b.removeAttribute("aria-expanded");
+    b.removeAttribute("data-inert");
+    b.disabled = true;
+    /* clear anything the projection loop may have written, so the list lays
+       out normally even if we fall back after the 3D scene has been running
+       (e.g. a lost WebGL context) */
+    b.removeAttribute("style");
+    b.parentElement.removeAttribute("style");
+  });
+}
+
+/* =====================================================================
+   PROCEDURAL SLEEVE ART
+   One cohesive series: same grid, varying catalogue number, org and the
+   placement of a generative groove motif.
+   ===================================================================== */
+
+function tracked(ctx, text, x, y, sp){
+  let cx = x;
+  for (const ch of text){ ctx.fillText(ch, cx, y); cx += ctx.measureText(ch).width + sp; }
+  return cx - x - sp;
+}
+function trackedWidth(ctx, text, sp){
+  let w = 0;
+  for (const ch of text) w += ctx.measureText(ch).width + sp;
+  return Math.max(0, w - sp);
+}
+function wrap(ctx, text, maxW){
+  const words = String(text).split(/\s+/);
+  const lines = []; let line = "";
+  for (const w of words){
+    const t = line ? line + " " + w : w;
+    if (ctx.measureText(t).width > maxW && line){ lines.push(line); line = w; }
+    else line = t;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+function grain(ctx, w, h, amount, alpha){
+  ctx.save();
+  for (let i = 0; i < amount; i++){
+    ctx.fillStyle = "rgba(255,255,255," + (Math.random() * alpha).toFixed(3) + ")";
+    ctx.fillRect(Math.random() * w, Math.random() * h, 1, 1);
+  }
+  ctx.restore();
+}
+function roundRect(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y,     x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x,     y + h, r);
+  ctx.arcTo(x,     y + h, x,     y,     r);
+  ctx.arcTo(x,     y,     x + w, y,     r);
+  ctx.closePath();
+}
+
+const S = 768;            // sleeve texture resolution
+const PAD = 66;
+
+function drawSleeveFront(ctx, r, i, img){
+  /* board */
+  const g = ctx.createLinearGradient(0, 0, S * .7, S);
+  g.addColorStop(0, "#1B1A1F"); g.addColorStop(.55, "#151519"); g.addColorStop(1, "#0F0F12");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
+
+  if (img && r.artStyle === "emblem"){
+    /* A light logo on transparency needs no plaque — it reads straight off the
+       dark board, which keeps the sleeve in the palette instead of punching a
+       bright rectangle through it. */
+    const max = S * .46;
+    const sc = Math.min(max / img.width, max / img.height);
+    const lw = img.width * sc, lh = img.height * sc;
+    /* Sits in the gap between the top rule and the title block, whose midpoint
+       is around 0.40. Override per record with `artY` (0 = top, 1 = bottom). */
+    const cy = S * (r.artY != null ? r.artY : .40);
+    ctx.drawImage(img, (S - lw) / 2, cy - lh / 2, lw, lh);
+
+  } else if (img && r.artStyle === "label"){
+    /* A logo drawn straight onto the dark board disappears when its artwork is
+       dark or sits on transparency (black wordmarks, dark-on-clear PNGs). So it
+       gets a printed label instead — the logo letterboxed on a cream plaque,
+       which is a real sleeve idiom and works for any logo background. */
+    const maxW = S * .60, maxH = S * .22;
+    const sc = Math.min(maxW / img.width, maxH / img.height);
+    const lw = img.width * sc, lh = img.height * sc;
+    const padX = S * .05, padY = S * .045;
+    const pw = lw + padX * 2, ph = lh + padY * 2;
+    const px = (S - pw) / 2, py = S * .19;
+
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,.6)"; ctx.shadowBlur = 28; ctx.shadowOffsetY = 9;
+    const pg = ctx.createLinearGradient(px, py, px, py + ph);
+    pg.addColorStop(0, "#F3F1EA"); pg.addColorStop(1, "#DEDBD1");
+    ctx.fillStyle = pg;
+    roundRect(ctx, px, py, pw, ph, 3); ctx.fill();
+    ctx.restore();
+
+    ctx.drawImage(img, px + padX, py + padY, lw, lh);
+
+  } else if (img){
+    /* photo cover: fill the sleeve, then scrim it back so the type still reads
+       and the cover stays inside the palette instead of glowing out of it */
+    const sc = Math.max(S / img.width, S / img.height);
+    const iw = img.width * sc, ih = img.height * sc;
+    ctx.drawImage(img, (S - iw) / 2, (S - ih) / 2, iw, ih);
+
+    ctx.fillStyle = "rgba(14,14,16,.40)";
+    ctx.fillRect(0, 0, S, S);
+
+    const top = ctx.createLinearGradient(0, 0, 0, S * .26);
+    top.addColorStop(0, "rgba(8,8,10,.72)"); top.addColorStop(1, "rgba(8,8,10,0)");
+    ctx.fillStyle = top; ctx.fillRect(0, 0, S, S * .26);
+
+    const bot = ctx.createLinearGradient(0, S * .40, 0, S);
+    bot.addColorStop(0, "rgba(8,8,10,0)");
+    bot.addColorStop(.55, "rgba(8,8,10,.78)");
+    bot.addColorStop(1, "rgba(8,8,10,.94)");
+    ctx.fillStyle = bot; ctx.fillRect(0, S * .40, S, S * .60);
+
+  } else {
+    /* generative groove motif — concentric rings, position walks per record */
+    const ang = (i / Math.max(1, RECORDS.length)) * Math.PI * 2;
+    const cxr = S * .70 + Math.cos(ang) * S * .09;
+    const cyr = S * .34 + Math.sin(ang) * S * .10;
+    ctx.save();
+    ctx.lineWidth = 1;
+    for (let k = 0; k < 34; k++){
+      const rad = 18 + k * 9.4;
+      ctx.strokeStyle = k % 6 === (i % 6)
+        ? "rgba(200,162,75," + (0.16 - k * 0.0034).toFixed(3) + ")"
+        : "rgba(237,237,232," + (0.075 - k * 0.0016).toFixed(3) + ")";
+      ctx.beginPath(); ctx.arc(cxr, cyr, rad, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(200,162,75,.5)";
+    ctx.beginPath(); ctx.arc(cxr, cyr, 4.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  /* catalogue number, top-left */
+  ctx.fillStyle = CSS.accent;
+  ctx.font = '700 27px "Space Mono", monospace';
+  ctx.textBaseline = "alphabetic";
+  tracked(ctx, r.cat, PAD, PAD + 24, 4.5);
+
+  /* label mark, top-right */
+  ctx.fillStyle = "rgba(138,138,130,.85)";
+  ctx.font = '400 17px "Space Mono", monospace';
+  const lw = trackedWidth(ctx, "THROWER REC.", 3.2);
+  tracked(ctx, "THROWER REC.", S - PAD - lw, PAD + 22, 3.2);
+
+  /* brass hairline */
+  ctx.fillStyle = "rgba(200,162,75,.34)";
+  ctx.fillRect(PAD, PAD + 46, S - PAD * 2, 1);
+
+  /* org, set large in the display face, bottom-left */
+  ctx.font = '700 62px "Space Grotesk", sans-serif';
+  const allLines = wrap(ctx, r.org, S - PAD * 2 - 30).slice(0, 3);
+  let y = S - PAD - 92 - (allLines.length - 1) * 62;
+  ctx.fillStyle = CSS.ink;
+  for (const ln of allLines){ ctx.fillText(ln, PAD, y); y += 62; }
+
+  /* role title above the org, mono + tracked */
+  ctx.fillStyle = "rgba(138,138,130,.95)";
+  ctx.font = '400 19px "Space Mono", monospace';
+  const titleY = S - PAD - 92 - (allLines.length - 1) * 62 - 74;
+  tracked(ctx, r.title.toUpperCase(), PAD, titleY, 3.4);
+
+  /* footer rule + kind */
+  ctx.fillStyle = "rgba(237,237,232,.14)";
+  ctx.fillRect(PAD, S - PAD - 58, S - PAD * 2, 1);
+  ctx.fillStyle = "rgba(138,138,130,.8)";
+  ctx.font = '400 15px "Space Mono", monospace';
+  tracked(ctx, r.kind.toUpperCase(), PAD, S - PAD - 26, 2.6);
+
+  /* LIMITED PRESSING foil */
+  if (r.limited){
+    ctx.save();
+    ctx.translate(S - PAD - 96, PAD + 150);
+    ctx.rotate(-0.14);
+    const fg = ctx.createLinearGradient(-96, -34, 96, 34);
+    fg.addColorStop(0, "rgba(200,162,75,.20)");
+    fg.addColorStop(.5, "rgba(255,233,199,.34)");
+    fg.addColorStop(1, "rgba(200,162,75,.16)");
+    ctx.fillStyle = fg;
+    roundRect(ctx, -100, -32, 200, 64, 3); ctx.fill();
+    ctx.strokeStyle = "rgba(200,162,75,.85)"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = "#F4E4BE";
+    ctx.font = '700 15px "Space Mono", monospace';
+    ctx.textAlign = "left";
+    const t1 = trackedWidth(ctx, "LIMITED", 4);
+    tracked(ctx, "LIMITED", -t1 / 2, -4, 4);
+    const t2 = trackedWidth(ctx, "PRESSING", 4);
+    tracked(ctx, "PRESSING", -t2 / 2, 19, 4);
+    ctx.restore();
+  }
+
+  /* wear: soft top-light sheen + edge darkening + grain */
+  const sh = ctx.createLinearGradient(0, 0, S * .5, S * .8);
+  sh.addColorStop(0, "rgba(255,233,199,.055)");
+  sh.addColorStop(.4, "rgba(255,233,199,0)");
+  ctx.fillStyle = sh; ctx.fillRect(0, 0, S, S);
+  ctx.strokeStyle = "rgba(0,0,0,.55)"; ctx.lineWidth = 8;
+  ctx.strokeRect(4, 4, S - 8, S - 8);
+  grain(ctx, S, S, 5200, .05);
+}
+
+function makeSleeveFront(r, i){
+  const c = document.createElement("canvas"); c.width = c.height = S;
+  const ctx = c.getContext("2d");
+  drawSleeveFront(ctx, r, i, null);
+  /* the sleeve paints immediately without its photo; if `art` is set the image
+     loads in the background and repaints over the top. A missing or broken
+     file just leaves the procedural cover in place. */
+  c.repaintWith = img => { ctx.clearRect(0, 0, S, S); drawSleeveFront(ctx, r, i, img); };
+  return c;
+}
+
+/* Same-origin files only (anything under public/). A cross-origin URL would
+   taint the canvas and Three would refuse to upload it as a texture. */
+function loadArt(src){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("sleeve art failed to load: " + src));
+    img.src = src;
+  });
+}
+
+/* The back of the sleeve is deliberately textless. The liner notes are an HTML
+   overlay pinned to the record (crisper, selectable, and it's the same text the
+   record's <button> already exposes to assistive tech). Painting the copy into
+   the texture as well would show through around the panel and double every
+   line. This is what you see mid-flip: a plain, dark, well-worn sleeve back. */
+function makeSleeveBack(r, i){
+  const c = document.createElement("canvas"); c.width = c.height = S;
+  const ctx = c.getContext("2d");
+
+  const g = ctx.createLinearGradient(0, 0, S * .6, S);
+  g.addColorStop(0, "#141317"); g.addColorStop(.6, "#101014"); g.addColorStop(1, "#0C0C0F");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
+
+  /* the same groove motif as the front, mirrored, so the series still reads */
+  const ang = (i / Math.max(1, RECORDS.length)) * Math.PI * 2;
+  const cxr = S * .30 - Math.cos(ang) * S * .09;
+  const cyr = S * .62 + Math.sin(ang) * S * .10;
+  ctx.lineWidth = 1;
+  for (let k = 0; k < 40; k++){
+    ctx.strokeStyle = "rgba(237,237,232," + (0.05 - k * 0.0011).toFixed(3) + ")";
+    ctx.beginPath(); ctx.arc(cxr, cyr, 22 + k * 10.5, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  /* a brass hairline top and bottom — the label's house furniture */
+  ctx.fillStyle = "rgba(200,162,75,.22)";
+  ctx.fillRect(PAD, PAD + 44, S - PAD * 2, 1);
+  ctx.fillRect(PAD, S - PAD - 44, S - PAD * 2, 1);
+
+  ctx.strokeStyle = "rgba(0,0,0,.5)"; ctx.lineWidth = 8;
+  ctx.strokeRect(4, 4, S - 8, S - 8);
+  grain(ctx, S, S, 4200, .045);
+  return c;
+}
+
+function makeVinylTexture(){
+  const N = 1024, h = N / 2;
+  const c = document.createElement("canvas"); c.width = c.height = N;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#08080A"; ctx.fillRect(0, 0, N, N);
+
+  /* grooves */
+  for (let r = h * .995; r > h * .30; r -= 2.2){
+    const a = 0.05 + Math.random() * 0.07;
+    ctx.strokeStyle = "rgba(255,255,255," + a.toFixed(3) + ")";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(h, h, r, 0, Math.PI * 2); ctx.stroke();
+  }
+  /* band separators */
+  [0.92, 0.74, 0.56, 0.42].forEach(f => {
+    ctx.strokeStyle = "rgba(255,255,255,.16)"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(h, h, h * f, 0, Math.PI * 2); ctx.stroke();
+  });
+
+  /* label */
+  const lg = ctx.createLinearGradient(h - 200, h - 200, h + 200, h + 200);
+  lg.addColorStop(0, "#232128"); lg.addColorStop(1, "#16151A");
+  ctx.fillStyle = lg;
+  ctx.beginPath(); ctx.arc(h, h, h * .30, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "rgba(200,162,75,.55)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(h, h, h * .295, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = "rgba(200,162,75,.2)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(h, h, h * .245, 0, Math.PI * 2); ctx.stroke();
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#EDEDE8";
+  ctx.font = '700 34px "Space Grotesk", sans-serif';
+  ctx.fillText("THROWER", h, h - 46);
+  ctx.fillStyle = CSS.accent;
+  ctx.font = '400 19px "Space Mono", monospace';
+  ctx.fillText("R E C O R D S", h, h - 16);
+  ctx.fillStyle = "rgba(138,138,130,.95)";
+  ctx.font = '400 16px "Space Mono", monospace';
+  ctx.fillText("SIDE A · 33⅓", h, h + 74);
+  ctx.textAlign = "left";
+
+  /* spindle hole */
+  ctx.fillStyle = "#000";
+  ctx.beginPath(); ctx.arc(h, h, 13, 0, Math.PI * 2); ctx.fill();
+
+  return c;
+}
+
+/* =====================================================================
+   SCENE
+   ===================================================================== */
+
+const state = {
+  focus: 0,
+  pulled: -1,        // index of the pulled record, -1 = none
+  flipped: false,
+  interacted: false,
+  pushedHistory: false,
+  ready: false
+};
+
+/* spring: physical, slightly overshooting; snaps flat under reduced motion */
+function Spring(v, stiff, damp){
+  this.x = v; this.v = 0; this.t = v; this.k = stiff || 150; this.d = damp || 21;
+}
+Spring.prototype.step = function(dt){
+  if (REDUCE){ this.x = this.t; this.v = 0; return this.x; }
+  /* substep for stability at low frame rates */
+  const n = Math.min(4, Math.ceil(dt / 0.012)) || 1, h = dt / n;
+  for (let i = 0; i < n; i++){
+    const a = this.k * (this.t - this.x) - this.d * this.v;
+    this.v += a * h;
+    this.x += this.v * h;
+  }
+  return this.x;
+};
+
+let renderer, scene, camera, clock;
+let recs = [], dust, dustGeo, turntableDisc, spot, pullKey, backdrop, backdropMat;
+const FLOOR_Y = 0.08;          // top of the crate's inner floor
+const CRATE_HALF_Z = 0.70;
+
+const tmpV = new THREE.Vector3();
+const tmpV2 = new THREE.Vector3();
+const tmpQ = new THREE.Quaternion();
+const tmpQ2 = new THREE.Quaternion();
+const tmpE = new THREE.Euler();
+const flipAxis = new THREE.Vector3(0, 1, 0);
+const flipQ = new THREE.Quaternion();
+const camUp = new THREE.Vector3();
+const facer = new THREE.Object3D();   // helper used to build the "face the camera" quaternion
+
+function init(){
+  const canvas = document.getElementById("gl");
+
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight, false);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.92;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(PALETTE.bg);
+  scene.fog = new THREE.Fog(PALETTE.bg, 4.0, 9.5);
+
+  camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+  clock = new THREE.Clock();
+
+  buildLights();
+  buildTable();
+  buildCrate();
+  buildRecords();
+  buildTurntable();
+  buildDust();
+  buildBackdrop();
+  linearizeColors();
+
+  layoutCamera();
+  window.addEventListener("resize", onResize, { passive: true });
+
+  state.ready = true;
+  document.body.classList.add("lit");
+  updateCaption();
+  renderer.setAnimationLoop(tick);
+}
+
+/* r128 predates three's colour management: material and light colours are fed
+   to the shader as linear, then gamma-encoded by `outputEncoding`. Authoring in
+   sRGB hex (so the scene matches the CSS palette) means converting once, after
+   the scene is built. Textures handle this themselves via `texture.encoding`.
+   The clear colour is written straight to the framebuffer, so it stays as-is;
+   the fog colour goes through the shader, so it gets converted. */
+function linearizeColors(){
+  scene.fog.color.convertSRGBToLinear();
+  scene.traverse(o => {
+    if (o.isLight && o.color) o.color.convertSRGBToLinear();
+    if (!o.isMesh && !o.isPoints) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of mats){
+      if (m && m.color && !m.userData._linearized){
+        m.color.convertSRGBToLinear();
+        m.userData._linearized = true;
+      }
+    }
+  });
+}
+
+function buildLights(){
+  scene.add(new THREE.AmbientLight(0x2A3348, 0.9));
+
+  spot = new THREE.SpotLight(PALETTE.spot, 0, 12, Math.PI * 0.195, 0.85, 1.5);
+  spot.position.set(0.1, 4.2, 2.0);
+  spot.target.position.set(0.05, 0.45, 0);
+  spot.castShadow = true;
+  spot.shadow.mapSize.set(1024, 1024);
+  spot.shadow.bias = -0.0012;
+  spot.shadow.camera.near = 1;
+  spot.shadow.camera.far = 14;
+  scene.add(spot, spot.target);
+
+  /* warm secondary pool over the turntable */
+  const spot2 = new THREE.SpotLight(PALETTE.spot, 3.2, 7.5, Math.PI * 0.20, 0.9, 1.7);
+  spot2.position.set(2.4, 2.8, 1.4);
+  spot2.target.position.set(1.9, 0.2, -0.12);
+  scene.add(spot2, spot2.target);
+
+  /* cool rim from behind-left, keeps the records readable against the dark */
+  const rim = new THREE.DirectionalLight(0x6E86B8, 0.7);
+  rim.position.set(-3.2, 2.0, -2.6);
+  scene.add(rim);
+
+  const fill = new THREE.DirectionalLight(0xFFE9C7, 0.18);
+  fill.position.set(1.5, 1.2, 3.5);
+  scene.add(fill);
+
+  /* keys the pulled record only — fades in with the pull so the sleeve reads
+     clearly once it leaves the crate's pool of light */
+  pullKey = new THREE.SpotLight(PALETTE.spot, 0, 9, Math.PI * 0.34, 0.95, 1.1);
+  scene.add(pullKey, pullKey.target);
+}
+
+function buildTable(){
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x121216, roughness: 0.96, metalness: 0.02
+  });
+  const table = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), mat);
+  table.rotation.x = -Math.PI / 2;
+  table.receiveShadow = true;
+  scene.add(table);
+}
+
+function buildCrate(){
+  const wood = new THREE.MeshStandardMaterial({
+    color: PALETTE.crate, roughness: 0.82, metalness: 0.03
+  });
+  const g = new THREE.Group();
+  const W = 1.34, D = CRATE_HALF_Z * 2, T = 0.055;
+
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(W + T * 2, T, D + T * 2), wood);
+  floor.position.y = FLOOR_Y - T / 2;
+  g.add(floor);
+
+  const back = new THREE.Mesh(new THREE.BoxGeometry(W + T * 2, 0.58, T), wood);
+  back.position.set(0, FLOOR_Y + 0.29, -(D / 2 + T / 2));
+  g.add(back);
+
+  const front = new THREE.Mesh(new THREE.BoxGeometry(W + T * 2, 0.26, T), wood);
+  front.position.set(0, FLOOR_Y + 0.13, D / 2 + T / 2);
+  g.add(front);
+
+  for (const s of [-1, 1]){
+    const side = new THREE.Mesh(new THREE.BoxGeometry(T, 0.50, D), wood);
+    side.position.set(s * (W / 2 + T / 2), FLOOR_Y + 0.25, 0);
+    g.add(side);
+    /* brass corner strap — the one place the accent shows in the geometry */
+    const strap = new THREE.Mesh(
+      new THREE.BoxGeometry(T * 1.25, 0.05, 0.05),
+      new THREE.MeshStandardMaterial({ color: PALETTE.accent, roughness: 0.42, metalness: 0.75 })
+    );
+    strap.position.set(s * (W / 2 + T / 2), FLOOR_Y + 0.40, D / 2 - 0.02);
+    g.add(strap);
+  }
+
+  g.traverse(o => { if (o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
+  scene.add(g);
+}
+
+function buildRecords(){
+  const edge = new THREE.MeshStandardMaterial({
+    color: PALETTE.card, roughness: 0.95, metalness: 0.0
+  });
+  const RW = 1.0, RH = 1.0, RD = 0.032;
+
+  RECORDS.forEach((r, i) => {
+    const frontCanvas = makeSleeveFront(r, i);
+    const frontTex = new THREE.CanvasTexture(frontCanvas);
+    const backTex  = new THREE.CanvasTexture(makeSleeveBack(r, i));
+    if (r.art){
+      loadArt(r.art)
+        .then(img => { frontCanvas.repaintWith(img); frontTex.needsUpdate = true; })
+        .catch(err => console.warn("[record-crate]", err.message));
+    }
+    [frontTex, backTex].forEach(t => {
+      t.encoding = THREE.sRGBEncoding;
+      t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      t.needsUpdate = true;
+    });
+
+    const front = new THREE.MeshStandardMaterial({ map: frontTex, roughness: 0.72, metalness: 0.06 });
+    const back  = new THREE.MeshStandardMaterial({ map: backTex,  roughness: 0.78, metalness: 0.03 });
+    /* BoxGeometry material order: +X, -X, +Y, -Y, +Z, -Z */
+    const mats = [edge, edge, edge, edge, front, back];
+
+    const group = new THREE.Group();
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(RW, RH, RD), mats);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    group.add(mesh);
+
+    /* the vinyl peeking out of the sleeve, visible once the record is pulled */
+    const disc = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.47, 0.47, 0.008, 48),
+      new THREE.MeshStandardMaterial({ color: 0x0B0B0D, roughness: 0.35, metalness: 0.15 })
+    );
+    disc.rotation.x = Math.PI / 2;
+    disc.position.set(0.055, 0.075, -RD / 2 - 0.006);
+    disc.castShadow = true;
+    group.add(disc);
+
+    scene.add(group);
+
+    recs.push({
+      data: r, group, mesh, disc,
+      theta: new Spring(-0.10, 130, 20),
+      z:     new Spring(0, 130, 20),
+      lift:  new Spring(0, 150, 22),
+      pull:  new Spring(0, 105, 19),
+      flip:  new Spring(0, 88, 17),
+      jitterY: (Math.random() - 0.5) * 0.035,
+      jitterZ: (Math.random() - 0.5) * 0.025,
+      jitterX: (Math.random() - 0.5) * 0.018,
+      el: btns[i].parentElement,
+      btn: btns[i]
+    });
+  });
+
+  applyCrateTargets(true);
+}
+
+function buildTurntable(){
+  const g = new THREE.Group();
+  g.position.set(1.95, 0, -0.16);
+
+  const plinth = new THREE.Mesh(
+    new THREE.BoxGeometry(1.36, 0.12, 1.16),
+    new THREE.MeshStandardMaterial({ color: 0x151419, roughness: 0.62, metalness: 0.12 })
+  );
+  plinth.position.y = 0.06;
+  g.add(plinth);
+
+  const platter = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.5, 0.5, 0.055, 56),
+    new THREE.MeshStandardMaterial({ color: 0x222025, roughness: 0.42, metalness: 0.55 })
+  );
+  platter.position.set(-0.08, 0.145, 0);
+  g.add(platter);
+
+  const vTex = new THREE.CanvasTexture(makeVinylTexture());
+  vTex.encoding = THREE.sRGBEncoding;
+  vTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  const vinylSide = new THREE.MeshStandardMaterial({ color: 0x0A0A0C, roughness: 0.45, metalness: 0.1 });
+  const vinylFace = new THREE.MeshStandardMaterial({ map: vTex, roughness: 0.30, metalness: 0.18 });
+  turntableDisc = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.47, 0.47, 0.012, 64),
+    [vinylSide, vinylFace, vinylFace]
+  );
+  turntableDisc.position.set(-0.08, 0.179, 0);
+  turntableDisc.castShadow = true;
+  g.add(turntableDisc);
+
+  /* spindle */
+  const spindle = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.012, 0.012, 0.075, 12),
+    new THREE.MeshStandardMaterial({ color: 0xB8B4AC, roughness: 0.3, metalness: 0.85 })
+  );
+  spindle.position.set(-0.08, 0.20, 0);
+  g.add(spindle);
+
+  /* tonearm */
+  const armMat = new THREE.MeshStandardMaterial({ color: 0x9A958C, roughness: 0.35, metalness: 0.8 });
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.062, 0.10, 20), armMat);
+  base.position.set(0.53, 0.17, -0.42);
+  g.add(base);
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.70, 0.018, 0.018), armMat);
+  arm.position.set(0.24, 0.225, -0.19);
+  arm.rotation.y = Math.PI * 0.30;
+  arm.rotation.z = -0.045;
+  g.add(arm);
+  const head = new THREE.Mesh(
+    new THREE.BoxGeometry(0.075, 0.05, 0.045),
+    new THREE.MeshStandardMaterial({ color: PALETTE.accent, roughness: 0.4, metalness: 0.7 })
+  );
+  head.position.set(-0.04, 0.205, -0.02);
+  g.add(head);
+
+  /* the sleeve of whatever is playing, leaning against the plinth */
+  const nowPlaying = RECORDS.find(r => r.limited) || RECORDS[0];
+  const leanCanvas = makeSleeveFront(nowPlaying, RECORDS.indexOf(nowPlaying));
+  const leanTex = new THREE.CanvasTexture(leanCanvas);
+  if (nowPlaying.art){
+    loadArt(nowPlaying.art)
+      .then(img => { leanCanvas.repaintWith(img); leanTex.needsUpdate = true; })
+      .catch(() => {});
+  }
+  leanTex.encoding = THREE.sRGBEncoding;
+  leanTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  const leanEdge = new THREE.MeshStandardMaterial({ color: PALETTE.card, roughness: 0.95 });
+  const leanFace = new THREE.MeshStandardMaterial({ map: leanTex, roughness: 0.78 });
+  const lean = new THREE.Mesh(
+    new THREE.BoxGeometry(0.72, 0.72, 0.026),
+    [leanEdge, leanEdge, leanEdge, leanEdge, leanFace, leanEdge]
+  );
+  /* laid flat on the table beside the deck, cover up — unambiguously resting */
+  lean.position.set(0.16, 0.086, 0.99);
+  lean.rotation.set(-1.34, 0, 0.22);
+  lean.castShadow = true;
+  lean.receiveShadow = true;
+  g.add(lean);
+
+  g.traverse(o => { if (o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
+  scene.add(g);
+}
+
+function buildDust(){
+  /* confined to the spotlight's cone so it reads as dust in the beam,
+     not as a starfield behind the scene */
+  const N = 260;
+  const pos = new Float32Array(N * 3);
+  const seed = new Float32Array(N);
+  for (let i = 0; i < N; i++){
+    const y = 0.12 + Math.random() * 2.1;
+    const r = Math.pow(Math.random(), 0.55) * (0.42 + y * 0.30);
+    const a = Math.random() * Math.PI * 2;
+    pos[i * 3]     = Math.cos(a) * r + 0.1;
+    pos[i * 3 + 1] = y;
+    pos[i * 3 + 2] = Math.sin(a) * r + 0.35;
+    seed[i] = Math.random() * Math.PI * 2;
+  }
+  dustGeo = new THREE.BufferGeometry();
+  dustGeo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  dustGeo.userData.seed = seed;
+
+  dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({
+    color: PALETTE.spot, size: 0.012, sizeAttenuation: true,
+    transparent: true, opacity: 0.26, depthWrite: false,
+    blending: THREE.AdditiveBlending
+  }));
+  scene.add(dust);
+}
+
+function buildBackdrop(){
+  backdropMat = new THREE.MeshBasicMaterial({
+    color: 0x000000, transparent: true, opacity: 0, depthWrite: false
+  });
+  backdrop = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), backdropMat);
+  backdrop.visible = false;
+  scene.add(backdrop);
+}
+
+/* -------------------- camera framing -------------------- */
+let camTargetPos = new THREE.Vector3();
+let camLookAt = new THREE.Vector3();
+let pulledCenter = new THREE.Vector3();
+
+function layoutCamera(){
+  const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+  const narrow = aspect < 1.0;
+
+  const R = 4.25 * Math.min(1.6, Math.max(1, 1.06 / aspect));
+  const elev = THREE.MathUtils.degToRad(narrow ? 36 : 40);
+
+  /* fog has to track the camera distance, or the crate sits inside it on
+     narrow screens (where the camera pulls back) and washes out to the bg */
+  scene.fog.near = R * 0.78;
+  scene.fog.far  = R * 2.5;
+
+  camLookAt.set(narrow ? 0.18 : 0.42, 0.46, 0);
+  camTargetPos.set(
+    camLookAt.x,
+    camLookAt.y + Math.sin(elev) * R,
+    camLookAt.z + Math.cos(elev) * R
+  );
+  camera.position.copy(camTargetPos);
+  camera.lookAt(camLookAt);
+
+  /* where a pulled record floats: far enough that it fits at any aspect */
+  const dist = Math.max(2.05, 1.78 / aspect);
+  camera.getWorldDirection(tmpV);
+  pulledCenter.copy(camera.position).add(tmpV.clone().multiplyScalar(dist));
+
+  backdrop.position.copy(camera.position).add(tmpV.clone().multiplyScalar(dist + 1.15));
+  backdrop.lookAt(camera.position);
+
+  /* key light sits just above and left of the camera, aimed at the pulled record */
+  pullKey.position.set(
+    camera.position.x - 1.1,
+    camera.position.y + 0.9,
+    camera.position.z - 0.35
+  );
+  pullKey.target.position.copy(pulledCenter);
+  pullKey.target.updateMatrixWorld();
+}
+
+function onResize(){
+  renderer.setSize(window.innerWidth, window.innerHeight, false);
+  camera.aspect = window.innerWidth / Math.max(1, window.innerHeight);
+  camera.updateProjectionMatrix();
+  layoutCamera();
+}
+
+/* -------------------- crate layout -------------------- */
+/* Records lean back so their covers face up toward the camera — the way a
+   bin reads when you're standing over it. Everything before the focus is
+   reclined into the "already flipped" pile; everything after stands upright. */
+function applyCrateTargets(snap){
+  const f = state.focus;
+  recs.forEach((rc, i) => {
+    let theta, z;
+    if (i < f){                     // flipped past — reclined back, out of the sightline
+      theta = -0.76;
+      z = 0.17 - (f - 1 - i) * 0.05;
+    } else if (i === f){            // focused — forward in the bin, tipped to the camera
+      theta = -0.46;
+      z = 0.43;
+    } else {                        // still to come — near upright, stacked behind
+      theta = -0.19;
+      z = -0.13 - (i - f - 1) * 0.052;
+    }
+    rc.theta.t = theta;
+    rc.z.t = z;
+    rc.lift.t = (i === f) ? 0.035 : 0;
+    if (snap || REDUCE){
+      rc.theta.x = theta; rc.theta.v = 0;
+      rc.z.x = z; rc.z.v = 0;
+      rc.lift.x = rc.lift.t; rc.lift.v = 0;
+    }
+  });
+}
+
+/* -------------------- per-frame transform -------------------- */
+function updateRecord(rc, dt){
+  const th = rc.theta.step(dt);
+  const z  = rc.z.step(dt);
+  const lift = rc.lift.step(dt);
+  const p  = THREE.MathUtils.clamp(rc.pull.step(dt), 0, 1.06);
+  const fl = THREE.MathUtils.clamp(rc.flip.step(dt), 0, 1.02);
+
+  /* base transform inside the crate (rotation about the record's centre) */
+  tmpE.set(th, rc.jitterY, rc.jitterZ, "XYZ");
+  tmpQ.setFromEuler(tmpE);
+  const baseY = FLOOR_Y + 0.5 * Math.cos(th) + lift;
+  tmpV.set(rc.jitterX, baseY, z);
+
+  if (p > 0.0005){
+    /* target: centred in front of the camera, facing it, flipped by `fl` */
+    facer.position.copy(pulledCenter);
+    facer.up.copy(camera.up);
+    facer.lookAt(camera.position);
+    tmpQ2.copy(facer.quaternion);
+    tmpQ2.multiply(flipQ.setFromAxisAngle(flipAxis, Math.PI * fl));
+    tmpQ.slerp(tmpQ2, p);
+    tmpV2.copy(pulledCenter);
+    tmpV.lerp(tmpV2, p);
+  }
+
+  rc.group.position.copy(tmpV);
+  rc.group.quaternion.copy(tmpQ);
+  rc.disc.visible = fl < 0.5 && p > 0.15;
+}
+
+/* -------------------- overlay projection -------------------- */
+const proj = new THREE.Vector3();
+const projUp = new THREE.Vector3();
+
+function positionOverlay(){
+  const W = window.innerWidth, H = window.innerHeight;
+  const anyPulled = state.pulled >= 0;
+  camUp.setFromMatrixColumn(camera.matrixWorld, 1).normalize();  // true screen-up
+
+  recs.forEach((rc, i) => {
+    rc.mesh.getWorldPosition(proj);
+    projUp.copy(proj).addScaledVector(camUp, 0.5);
+    proj.project(camera);
+    projUp.project(camera);
+
+    const behind = proj.z > 1;
+    const x = (proj.x * 0.5 + 0.5) * W;
+    const y = (-proj.y * 0.5 + 0.5) * H;
+    const half = Math.abs((-projUp.y * 0.5 + 0.5) * H - y);
+    /* the focused record gets a generous target (it's the one you click and
+       the one the focus ring outlines); the rest stay tight so they don't
+       swallow it. Depth ordering below settles any remaining overlap. */
+    const size = Math.max(48, half * (i === state.focus ? 2.0 : 1.15));
+
+    const hidden = behind || (anyPulled && i !== state.pulled);
+    rc.el.style.width  = size + "px";
+    rc.el.style.height = size + "px";
+    rc.el.style.transform =
+      "translate(" + (x - size / 2).toFixed(1) + "px," + (y - size / 2).toFixed(1) + "px)";
+    /* Hit-testing has to follow 3D depth, not DOM order — otherwise the last
+       record in the array swallows clicks meant for the one in front of it. */
+    rc.el.style.zIndex = String(Math.round((1 - proj.z) * 10000));
+    rc.btn.dataset.inert = String(hidden);
+    rc.btn.tabIndex = hidden ? -1 : 0;
+  });
+
+  /* the liner-notes panel tracks the pulled record */
+  if (anyPulled && state.flipped){
+    const rc = recs[state.pulled];
+    rc.mesh.getWorldPosition(proj);
+    projUp.copy(proj).addScaledVector(camUp, 0.5);
+    proj.project(camera);
+    projUp.project(camera);
+    const x = (proj.x * 0.5 + 0.5) * W;
+    const y = (-proj.y * 0.5 + 0.5) * H;
+    const half = Math.abs((-projUp.y * 0.5 + 0.5) * H - y);
+    const w = Math.min(W - 28, half * 2 * 0.98);
+    const h = Math.min(H - 120, half * 2 * 0.98);
+    liner.style.width = w + "px";
+    liner.style.maxHeight = h + "px";
+    liner.style.left = x + "px";
+    liner.style.top = y + "px";
+    liner.style.fontSize = THREE.MathUtils.clamp(w / 27, 10.5, 17) + "px";
+  }
+}
+
+/* -------------------- loop -------------------- */
+let elapsed = 0;
+let spotFade = 0;
+const parallax = { x: 0, y: 0, tx: 0, ty: 0 };
+
+function tick(){
+  const dt = Math.min(0.05, clock.getDelta());
+  elapsed += dt;
+
+  /* spotlight fades up on load */
+  spotFade += (1 - spotFade) * (REDUCE ? 1 : 1 - Math.exp(-2.6 * dt));
+  spot.intensity = 9.5 * spotFade;
+
+  if (!REDUCE){
+    /* turntable */
+    turntableDisc.rotation.y -= dt * 0.62;
+
+    /* dust — slow rise with a lateral sway, recycled at the top */
+    const p = dustGeo.attributes.position.array;
+    const seed = dustGeo.userData.seed;
+    for (let i = 0; i < seed.length; i++){
+      const j = i * 3;
+      p[j + 1] += dt * (0.018 + (i % 7) * 0.004);
+      p[j]     += Math.sin(elapsed * 0.35 + seed[i]) * dt * 0.022;
+      p[j + 2] += Math.cos(elapsed * 0.28 + seed[i]) * dt * 0.018;
+      if (p[j + 1] > 2.25) p[j + 1] = 0.12;
+    }
+    dustGeo.attributes.position.needsUpdate = true;
+
+    /* barely-there camera parallax */
+    parallax.x += (parallax.tx - parallax.x) * (1 - Math.exp(-2.2 * dt));
+    parallax.y += (parallax.ty - parallax.y) * (1 - Math.exp(-2.2 * dt));
+    camera.position.set(
+      camTargetPos.x + parallax.x * 0.20,
+      camTargetPos.y + parallax.y * 0.13,
+      camTargetPos.z
+    );
+    camera.lookAt(camLookAt);
+  }
+
+  const dimT = state.pulled >= 0 ? 1 : 0;
+  const k = REDUCE ? 1 : 1 - Math.exp(-5.5 * dt);
+  backdropMat.opacity += (dimT * 0.74 - backdropMat.opacity) * k;
+  pullKey.intensity += (dimT * 3.1 * spotFade - pullKey.intensity) * k;
+  backdrop.visible = backdropMat.opacity > 0.004;
+
+  for (const rc of recs) updateRecord(rc, dt);
+
+  positionOverlay();
+  renderer.render(scene, camera);
+}
+
+/* =====================================================================
+   INTERACTION
+   ===================================================================== */
+
+const liner = document.getElementById("liner");
+const caption = document.getElementById("caption");
+const hint = document.getElementById("hint");
+
+function markInteracted(){
+  if (state.interacted) return;
+  state.interacted = true;
+  hint.classList.add("gone");
+}
+
+function updateCaption(){
+  const r = RECORDS[state.focus];
+  caption.innerHTML = "";
+  const mk = (cls, txt) => { const s = document.createElement("span"); s.className = cls; s.textContent = txt; return s; };
+  caption.appendChild(mk("cat", r.cat));
+  caption.appendChild(mk("sep", "·"));
+  caption.appendChild(mk("org", r.org));
+  if (r.limited) caption.appendChild(mk("pressing", "Limited pressing"));
+}
+
+function setFocus(i, fromUser){
+  const n = RECORDS.length;
+  state.focus = ((i % n) + n) % n;
+  applyCrateTargets(false);
+  updateCaption();
+  if (fromUser) markInteracted();
+}
+
+function buildLiner(r){
+  liner.innerHTML = "";
+  const head = document.createElement("div");
+  head.className = "ln-head";
+  head.innerHTML = '<span class="cat"></span><span>Liner notes</span>';
+  head.querySelector(".cat").textContent = r.cat;
+  liner.appendChild(head);
+
+  const h3 = document.createElement("h3"); h3.textContent = r.title; liner.appendChild(h3);
+  const org = document.createElement("p"); org.className = "ln-org"; org.textContent = r.org; liner.appendChild(org);
+
+  const dl = document.createElement("dl");
+  [["Kind", r.kind], ["Dates", r.dates], ["Location", r.location]].forEach(([k, v]) => {
+    const dt = document.createElement("dt"); dt.textContent = k;
+    const dd = document.createElement("dd"); dd.textContent = v;
+    dl.appendChild(dt); dl.appendChild(dd);
+  });
+  liner.appendChild(dl);
+
+  const p = document.createElement("p"); p.className = "ln-notes"; p.textContent = r.notes; liner.appendChild(p);
+
+  const st = document.createElement("div"); st.className = "ln-stack";
+  r.stack.forEach(s => { const e = document.createElement("span"); e.textContent = s; st.appendChild(e); });
+  liner.appendChild(st);
+
+  if (r.limited){
+    const f = document.createElement("p"); f.className = "ln-foil";
+    f.textContent = "Limited pressing";
+    liner.appendChild(f);
+  }
+}
+
+function pull(i){
+  markInteracted();
+  if (state.focus !== i) setFocus(i, true);
+  if (state.pulled === i) return;
+
+  state.pulled = i;
+  state.flipped = false;
+  recs.forEach((rc, k) => {
+    rc.pull.t = (k === i) ? 1 : 0;
+    rc.flip.t = 0;
+    if (REDUCE){ rc.pull.x = rc.pull.t; rc.flip.x = 0; rc.pull.v = rc.flip.v = 0; }
+  });
+
+  document.body.classList.add("pulled");
+  document.getElementById("gl").classList.add("pulled");
+  btns[i].setAttribute("aria-expanded", "true");
+  liner.classList.remove("show");
+  buildLiner(RECORDS[i]);
+  setFlipLabel();
+
+  if (!state.pushedHistory){
+    try { history.pushState({ crate: "pulled" }, ""); state.pushedHistory = true; } catch (_) {}
+  }
+}
+
+let flipTimer = null;
+function flip(on){
+  if (state.pulled < 0) return;
+  state.flipped = (on === undefined) ? !state.flipped : !!on;
+  const rc = recs[state.pulled];
+  rc.flip.t = state.flipped ? 1 : 0;
+  if (REDUCE){ rc.flip.x = rc.flip.t; rc.flip.v = 0; }
+
+  clearTimeout(flipTimer);
+  if (state.flipped){
+    /* the HTML panel lands after the record has turned past edge-on */
+    const delay = REDUCE ? 0 : 380;
+    flipTimer = setTimeout(() => {
+      if (state.flipped && state.pulled >= 0){ positionOverlay(); liner.classList.add("show"); }
+    }, delay);
+  } else {
+    liner.classList.remove("show");
+  }
+  setFlipLabel();
+}
+function setFlipLabel(){
+  document.getElementById("btn-flip").textContent = state.flipped ? "Front cover" : "Flip · liner notes";
+}
+
+function returnToCrate(viaHistory){
+  if (state.pulled < 0) return;
+  const i = state.pulled;
+  state.pulled = -1;
+  state.flipped = false;
+  clearTimeout(flipTimer);
+  liner.classList.remove("show");
+  recs.forEach(rc => {
+    rc.pull.t = 0; rc.flip.t = 0;
+    if (REDUCE){ rc.pull.x = 0; rc.flip.x = 0; rc.pull.v = rc.flip.v = 0; }
+  });
+  document.body.classList.remove("pulled");
+  document.getElementById("gl").classList.remove("pulled");
+  btns[i].setAttribute("aria-expanded", "false");
+  if (document.activeElement === liner || liner.contains(document.activeElement)) btns[i].focus();
+
+  if (state.pushedHistory && !viaHistory){
+    state.pushedHistory = false;
+    try { history.back(); } catch (_) {}
+  } else if (viaHistory){
+    state.pushedHistory = false;
+  }
+}
+
+/* record buttons: focus → pull → flip */
+btns.forEach((b, i) => {
+  b.addEventListener("click", () => {
+    if (suppressClick) return;
+    if (state.pulled === i) flip();
+    else if (state.focus === i) pull(i);
+    else setFocus(i, true);
+  });
+  b.addEventListener("focus", () => {
+    if (state.pulled < 0 && state.focus !== i) setFocus(i, false);
+  });
+});
+
+/* -------------------- pointer: drag to browse -------------------- */
+let dragging = false, dragStartX = 0, dragAccum = 0, dragMoved = 0, suppressClick = false;
+const glEl = document.getElementById("gl");
+
+function onPointerDown(e){
+  if (state.pulled >= 0) return;
+  dragging = true; dragMoved = 0; dragAccum = 0;
+  dragStartX = e.clientX;
+  glEl.classList.add("dragging");
+}
+function onPointerMove(e){
+  parallax.tx = (e.clientX / window.innerWidth - 0.5) * 2;
+  parallax.ty = (e.clientY / window.innerHeight - 0.5) * 2;
+  if (!dragging) return;
+  /* If we ever miss a pointerup — pointer left the window, tab switch, a
+     synthetic event — `dragging` would stick and the crate would browse on
+     every mouse move. The button state is the authority. */
+  if (e.pointerType === "mouse" && e.buttons === 0){ onPointerUp(); return; }
+  const dx = e.clientX - dragStartX;
+  dragStartX = e.clientX;
+  dragMoved += Math.abs(dx);
+  dragAccum += dx;
+  const STEP = 64;
+  while (Math.abs(dragAccum) >= STEP){
+    const dir = dragAccum > 0 ? 1 : -1;
+    dragAccum -= dir * STEP;
+    setFocus(state.focus - dir, true);   // drag right = flip back toward DT-001
+  }
+}
+function onPointerUp(){
+  if (!dragging) return;
+  dragging = false;
+  glEl.classList.remove("dragging");
+  if (dragMoved > 8){
+    suppressClick = true;
+    setTimeout(() => { suppressClick = false; }, 0);
+  }
+}
+window.addEventListener("pointerdown", e => {
+  if (e.target.closest(".sheet") || e.target.closest("#topbar") ||
+      e.target.closest("#pullbar") || e.target.closest("#footline") ||
+      e.target.closest("#liner")) return;
+  onPointerDown(e);
+});
+window.addEventListener("pointermove", onPointerMove, { passive: true });
+window.addEventListener("pointerup", onPointerUp);
+window.addEventListener("pointercancel", onPointerUp);
+window.addEventListener("blur", onPointerUp);
+document.addEventListener("visibilitychange", () => { if (document.hidden) onPointerUp(); });
+
+/* click on empty space while pulled → back to the crate */
+glEl.addEventListener("click", () => { if (state.pulled >= 0 && !suppressClick) returnToCrate(); });
+
+/* wheel browses too */
+let wheelLock = 0;
+window.addEventListener("wheel", e => {
+  if (state.pulled >= 0 || Date.now() < wheelLock) return;
+  if (e.target.closest(".sheet")) return;
+  const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  if (Math.abs(d) < 6) return;
+  wheelLock = Date.now() + 180;
+  setFocus(state.focus + (d > 0 ? 1 : -1), true);
+}, { passive: true });
+
+/* -------------------- keyboard -------------------- */
+window.addEventListener("keydown", e => {
+  if (e.target.closest && e.target.closest(".sheet")) {
+    if (e.key === "Escape"){ setSheet(null, false); sheets.about.btn.focus(); }
+    return;
+  }
+  switch (e.key){
+    case "ArrowRight": case "ArrowDown":
+      if (state.pulled >= 0) return;
+      e.preventDefault(); setFocus(state.focus + 1, true); btns[state.focus].focus(); break;
+    case "ArrowLeft": case "ArrowUp":
+      if (state.pulled >= 0) return;
+      e.preventDefault(); setFocus(state.focus - 1, true); btns[state.focus].focus(); break;
+    case "Home":
+      if (state.pulled >= 0) return;
+      e.preventDefault(); setFocus(0, true); btns[0].focus(); break;
+    case "End":
+      if (state.pulled >= 0) return;
+      e.preventDefault(); setFocus(RECORDS.length - 1, true); btns[state.focus].focus(); break;
+    case "Escape":
+      if (document.querySelector('.sheet[data-open="true"]')){ setSheet(null, false); break; }
+      if (state.pulled >= 0){ e.preventDefault(); const i = state.pulled; returnToCrate(); btns[i].focus(); }
+      break;
+    case " ": case "Enter":
+      /* buttons handle their own activation; this covers the canvas having focus */
+      if (e.target === document.body){
+        e.preventDefault();
+        if (state.pulled >= 0) flip(); else pull(state.focus);
+      }
+      break;
+  }
+});
+
+/* browser back closes the pulled record */
+window.addEventListener("popstate", () => {
+  if (state.pulled >= 0) returnToCrate(true);
+});
+
+/* -------------------- chrome buttons -------------------- */
+document.getElementById("btn-prev").addEventListener("click", () => {
+  if (state.pulled >= 0) return;
+  setFocus(state.focus - 1, true);
+});
+document.getElementById("btn-next").addEventListener("click", () => {
+  if (state.pulled >= 0) return;
+  setFocus(state.focus + 1, true);
+});
+document.getElementById("btn-flip").addEventListener("click", () => flip());
+document.getElementById("btn-close").addEventListener("click", () => {
+  const i = state.pulled; returnToCrate(); if (i >= 0) btns[i].focus();
+});
+
+/* =====================================================================
+   BOOT
+   ===================================================================== */
+function boot(){
+  if (!window.THREE || !webglOK()){ goFallback(); return; }
+  try {
+    init();
+  } catch (err){
+    console.error("[record-crate] WebGL init failed:", err);
+    goFallback();
+  }
+}
+
+/* Wait for the display/mono faces so the canvas sleeves aren't drawn in a
+   fallback face, but never block the page on it. */
+if (document.fonts && document.fonts.ready){
+  let booted = false;
+  const go = () => { if (!booted){ booted = true; boot(); } };
+  document.fonts.ready.then(go);
+  setTimeout(go, 2500);
+} else {
+  boot();
+}
+</script>
+</body>
+</html>

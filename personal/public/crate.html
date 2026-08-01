@@ -421,6 +421,17 @@ body.fallback .rec-stack{
 
 /* ---------------------------- DATA ---------------------------- */
 
+/* Optional per-record sleeve photo:
+ *
+ *     art: "crate-art/antalmanac.png"
+ *
+ * Drop the file in `public/crate-art/` and reference it with that relative
+ * path — it resolves correctly at "/", at "/crate.html", and when this file
+ * is opened straight off disk. Square images look best (the sleeve is 1:1);
+ * anything else is centre-cropped to fill. The photo is scrimmed dark so the
+ * catalogue number and org still read over it. Omit `art` and the record
+ * keeps the procedural groove cover. */
+
 const RECORDS = [
   {
     cat: "DT-001",
@@ -509,11 +520,11 @@ const RECORDS = [
      ------------------------------------------------------------------ */
 ];
 
-/* DERRICK — fill these in. Set a value to null to hide that row. */
+/* Set a value to null to hide that row. */
 const CONTACT = [
-  { k: "Email",    v: "throwerd@uci.edu",                 href: "mailto:throwerd@uci.edu" },
-  { k: "LinkedIn", v: "linkedin.com/in/your-handle",      href: "https://www.linkedin.com/in/your-handle" },
-  { k: "GitHub",   v: "github.com/your-handle",           href: "https://github.com/your-handle" }
+  { k: "Email",    v: "throwerd@uci.edu",              href: "mailto:throwerd@uci.edu" },
+  { k: "LinkedIn", v: "linkedin.com/in/derrickthrower", href: "https://www.linkedin.com/in/derrickthrower/" },
+  { k: "GitHub",   v: "github.com/DerrickThrower",      href: "https://github.com/DerrickThrower" }
 ];
 
 /* Alternate tagline, if you prefer it — swap into #tagline in the markup:
@@ -683,31 +694,49 @@ function roundRect(ctx, x, y, w, h, r){
 const S = 768;            // sleeve texture resolution
 const PAD = 66;
 
-function makeSleeveFront(r, i){
-  const c = document.createElement("canvas"); c.width = c.height = S;
-  const ctx = c.getContext("2d");
-
+function drawSleeveFront(ctx, r, i, img){
   /* board */
   const g = ctx.createLinearGradient(0, 0, S * .7, S);
   g.addColorStop(0, "#1B1A1F"); g.addColorStop(.55, "#151519"); g.addColorStop(1, "#0F0F12");
   ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
 
-  /* generative groove motif — concentric rings, position walks per record */
-  const ang = (i / Math.max(1, RECORDS.length)) * Math.PI * 2;
-  const cxr = S * .70 + Math.cos(ang) * S * .09;
-  const cyr = S * .34 + Math.sin(ang) * S * .10;
-  ctx.save();
-  ctx.lineWidth = 1;
-  for (let k = 0; k < 34; k++){
-    const rad = 18 + k * 9.4;
-    ctx.strokeStyle = k % 6 === (i % 6)
-      ? "rgba(200,162,75," + (0.16 - k * 0.0034).toFixed(3) + ")"
-      : "rgba(237,237,232," + (0.075 - k * 0.0016).toFixed(3) + ")";
-    ctx.beginPath(); ctx.arc(cxr, cyr, rad, 0, Math.PI * 2); ctx.stroke();
+  if (img){
+    /* photo cover: fill the sleeve, then scrim it back so the type still reads
+       and the cover stays inside the palette instead of glowing out of it */
+    const sc = Math.max(S / img.width, S / img.height);
+    const iw = img.width * sc, ih = img.height * sc;
+    ctx.drawImage(img, (S - iw) / 2, (S - ih) / 2, iw, ih);
+
+    ctx.fillStyle = "rgba(14,14,16,.40)";
+    ctx.fillRect(0, 0, S, S);
+
+    const top = ctx.createLinearGradient(0, 0, 0, S * .26);
+    top.addColorStop(0, "rgba(8,8,10,.72)"); top.addColorStop(1, "rgba(8,8,10,0)");
+    ctx.fillStyle = top; ctx.fillRect(0, 0, S, S * .26);
+
+    const bot = ctx.createLinearGradient(0, S * .40, 0, S);
+    bot.addColorStop(0, "rgba(8,8,10,0)");
+    bot.addColorStop(.55, "rgba(8,8,10,.78)");
+    bot.addColorStop(1, "rgba(8,8,10,.94)");
+    ctx.fillStyle = bot; ctx.fillRect(0, S * .40, S, S * .60);
+  } else {
+    /* generative groove motif — concentric rings, position walks per record */
+    const ang = (i / Math.max(1, RECORDS.length)) * Math.PI * 2;
+    const cxr = S * .70 + Math.cos(ang) * S * .09;
+    const cyr = S * .34 + Math.sin(ang) * S * .10;
+    ctx.save();
+    ctx.lineWidth = 1;
+    for (let k = 0; k < 34; k++){
+      const rad = 18 + k * 9.4;
+      ctx.strokeStyle = k % 6 === (i % 6)
+        ? "rgba(200,162,75," + (0.16 - k * 0.0034).toFixed(3) + ")"
+        : "rgba(237,237,232," + (0.075 - k * 0.0016).toFixed(3) + ")";
+      ctx.beginPath(); ctx.arc(cxr, cyr, rad, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(200,162,75,.5)";
+    ctx.beginPath(); ctx.arc(cxr, cyr, 4.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
   }
-  ctx.fillStyle = "rgba(200,162,75,.5)";
-  ctx.beginPath(); ctx.arc(cxr, cyr, 4.5, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
 
   /* catalogue number, top-left */
   ctx.fillStyle = CSS.accent;
@@ -775,8 +804,28 @@ function makeSleeveFront(r, i){
   ctx.strokeStyle = "rgba(0,0,0,.55)"; ctx.lineWidth = 8;
   ctx.strokeRect(4, 4, S - 8, S - 8);
   grain(ctx, S, S, 5200, .05);
+}
 
+function makeSleeveFront(r, i){
+  const c = document.createElement("canvas"); c.width = c.height = S;
+  const ctx = c.getContext("2d");
+  drawSleeveFront(ctx, r, i, null);
+  /* the sleeve paints immediately without its photo; if `art` is set the image
+     loads in the background and repaints over the top. A missing or broken
+     file just leaves the procedural cover in place. */
+  c.repaintWith = img => { ctx.clearRect(0, 0, S, S); drawSleeveFront(ctx, r, i, img); };
   return c;
+}
+
+/* Same-origin files only (anything under public/). A cross-origin URL would
+   taint the canvas and Three would refuse to upload it as a texture. */
+function loadArt(src){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("sleeve art failed to load: " + src));
+    img.src = src;
+  });
 }
 
 /* The back of the sleeve is deliberately textless. The liner notes are an HTML
@@ -1050,8 +1099,14 @@ function buildRecords(){
   const RW = 1.0, RH = 1.0, RD = 0.032;
 
   RECORDS.forEach((r, i) => {
-    const frontTex = new THREE.CanvasTexture(makeSleeveFront(r, i));
+    const frontCanvas = makeSleeveFront(r, i);
+    const frontTex = new THREE.CanvasTexture(frontCanvas);
     const backTex  = new THREE.CanvasTexture(makeSleeveBack(r, i));
+    if (r.art){
+      loadArt(r.art)
+        .then(img => { frontCanvas.repaintWith(img); frontTex.needsUpdate = true; })
+        .catch(err => console.warn("[record-crate]", err.message));
+    }
     [frontTex, backTex].forEach(t => {
       t.encoding = THREE.sRGBEncoding;
       t.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -1156,9 +1211,13 @@ function buildTurntable(){
 
   /* the sleeve of whatever is playing, leaning against the plinth */
   const nowPlaying = RECORDS.find(r => r.limited) || RECORDS[0];
-  const leanTex = new THREE.CanvasTexture(
-    makeSleeveFront(nowPlaying, RECORDS.indexOf(nowPlaying))
-  );
+  const leanCanvas = makeSleeveFront(nowPlaying, RECORDS.indexOf(nowPlaying));
+  const leanTex = new THREE.CanvasTexture(leanCanvas);
+  if (nowPlaying.art){
+    loadArt(nowPlaying.art)
+      .then(img => { leanCanvas.repaintWith(img); leanTex.needsUpdate = true; })
+      .catch(() => {});
+  }
   leanTex.encoding = THREE.sRGBEncoding;
   leanTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
   const leanEdge = new THREE.MeshStandardMaterial({ color: PALETTE.card, roughness: 0.95 });

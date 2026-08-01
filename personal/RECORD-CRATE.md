@@ -68,6 +68,34 @@ Add, remove, or reorder freely — the 3D crate, the caption, the accessible lis
 non-WebGL fallback and the liner-notes panel are all built from this one array. Nothing
 else needs to change.
 
+### Putting a photo on a sleeve
+
+Drop an image in `public/crate-art/` and add an `art` field to the record:
+
+```js
+{
+  cat: "DT-004",
+  org: "AntAlmanac · UCI ICS Student Council",
+  art: "crate-art/antalmanac.png",   // ← relative path, see note below
+  ...
+}
+```
+
+The photo fills the sleeve and gets scrimmed dark automatically — a top gradient so
+the catalogue number reads, a heavier bottom one so the org name does. Omit `art` and
+the record keeps its procedural groove cover; the two styles sit together fine.
+
+- **Square images look best.** The sleeve is 1:1; anything else is centre-cropped to fill.
+- **Keep the path relative** (`crate-art/…`, no leading slash). It then resolves correctly
+  at `/`, at `/crate.html`, and when the file is opened straight off disk.
+- **Same-origin only.** Files under `public/` are fine. A photo hotlinked from another
+  domain would taint the canvas and Three.js would refuse to upload it as a texture.
+- The sleeve paints immediately without the photo and repaints when the image arrives,
+  so a slow or missing file never blocks the scene — it just leaves the procedural cover.
+- Dark, low-contrast images sit best in the palette. A bright, saturated logo will pop
+  out of the moody grade; raise the `rgba(14,14,16,.40)` scrim in `drawSleeveFront` if
+  you want to push one back.
+
 ### The hackathon record
 
 There's a commented-out `DT-007` entry at the bottom of `RECORDS`. Uncomment it, fill in

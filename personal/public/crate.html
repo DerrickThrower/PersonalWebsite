@@ -85,6 +85,20 @@ body.fallback #stage{ display:none; }
   pointer-events:none; opacity:1; transition:opacity 900ms ease 120ms;
 }
 body.lit #curtain{ opacity:0; }
+body.leaving #curtain{ opacity:1; transition:opacity 400ms ease; }
+
+.navbtn.arcade-link{ text-decoration:none; color:var(--accent); }
+.navbtn.arcade-link:hover{ color:var(--ink); }
+
+/* the doorway's hit target, projected onto the 3D sign each frame */
+#door-link{
+  position:fixed; z-index:11; left:0; top:0; display:block;
+  border:1px solid transparent; border-radius:3px;
+  pointer-events:auto; text-decoration:none;
+}
+#door-link:hover{ border-color:rgba(120,180,255,.45); }
+#door-link:focus-visible{ outline:2px solid #7AB6FF; outline-offset:4px; }
+body.pulled #door-link{ pointer-events:none; opacity:0; }
 
 /* ---------- top bar ---------- */
 #topbar{
@@ -413,6 +427,7 @@ body.fallback .rec-stack{
   <nav class="top-nav" aria-label="Site">
     <button class="navbtn" id="btn-about"   aria-expanded="false" aria-controls="sheet-about">About</button>
     <button class="navbtn" id="btn-contact" aria-expanded="false" aria-controls="sheet-contact">Contact</button>
+    <a class="navbtn arcade-link" href="/arcade">Arcade &#8594;</a>
   </nav>
 </header>
 
@@ -439,6 +454,7 @@ body.fallback .rec-stack{
 <!-- ============ liner notes overlay (visual mirror of the focused <li>) ============ -->
 <div id="liner" aria-hidden="true"></div>
 <div id="cardnote" aria-hidden="true"></div>
+<a id="door-link" href="/arcade"><span class="sr">Enter the arcade</span></a>
 
 <!-- ============ footer caption + hint ============ -->
 <div id="footline">
@@ -1157,6 +1173,7 @@ function init(){
   buildRecords();
   buildCatalog();
   buildTurntable();
+  buildDoorway();
   buildDust();
   buildBackdrop();
   linearizeColors();
@@ -1607,6 +1624,100 @@ function updateCard(cd, dt){
   cd.card.visible = s > 0.02 || r > 0.02;
 }
 
+/* =====================================================================
+   THE DOORWAY
+   The way out of the shop. A lit sign over a dark opening at the back of
+   the room — cool blue against the shop's warm brass, so it reads as
+   somewhere else rather than more of here.
+   ===================================================================== */
+let doorSign;
+
+function buildDoorway(){
+  const g = new THREE.Group();
+  /* the whole shop is a miniature — a full-height doorway lands off the top
+     of the frame, so this is scaled to the furniture around it */
+  g.position.set(0, 0, -1.78);
+
+  const jamb = new THREE.MeshStandardMaterial({ color: 0x2A2620, roughness: 0.85 });
+  const W = 0.74, H = 0.88, T = 0.085;
+
+  /* the opening itself: a black void, so the eye reads depth beyond it */
+  const vc = document.createElement("canvas"); vc.width = 128; vc.height = 160;
+  const vx = vc.getContext("2d");
+  vx.fillStyle = "#02030A"; vx.fillRect(0, 0, 128, 160);
+  const vg = vx.createRadialGradient(64, 150, 4, 64, 150, 110);
+  vg.addColorStop(0, "rgba(122,182,255,.42)");
+  vg.addColorStop(.45, "rgba(90,140,220,.13)");
+  vg.addColorStop(1, "rgba(0,0,0,0)");
+  vx.fillStyle = vg; vx.fillRect(0, 0, 128, 160);
+  const voidTex = new THREE.CanvasTexture(vc);
+  voidTex.encoding = THREE.sRGBEncoding;
+  const voidPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(W, H),
+    new THREE.MeshBasicMaterial({ map: voidTex })
+  );
+  voidPlane.position.set(0, H / 2, -0.02);
+  g.add(voidPlane);
+
+  for (const s of [-1, 1]){
+    const post = new THREE.Mesh(new THREE.BoxGeometry(T, H + T, T), jamb);
+    post.position.set(s * (W / 2 + T / 2), (H + T) / 2, 0);
+    g.add(post);
+  }
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(W + T * 2, T, T), jamb);
+  lintel.position.set(0, H + T / 2, 0);
+  g.add(lintel);
+
+  /* the sign */
+  const c = document.createElement("canvas"); c.width = 512; c.height = 160;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#05060E"; ctx.fillRect(0, 0, 512, 160);
+  ctx.strokeStyle = "rgba(122,182,255,.55)"; ctx.lineWidth = 4;
+  ctx.strokeRect(9, 9, 494, 142);
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillStyle = "#9FCBFF";
+  ctx.font = '700 62px "Space Grotesk", sans-serif';
+  ctx.fillText("ARCADE", 256, 74);
+  ctx.fillStyle = "rgba(122,182,255,.75)";
+  ctx.font = '400 22px "Space Mono", monospace';
+  ctx.fillText("THIS WAY →", 256, 124);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.encoding = THREE.sRGBEncoding;
+  doorSign = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.74, 0.23),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true })
+  );
+  doorSign.position.set(0, H + 0.17, 0.05);
+  g.add(doorSign);
+
+  /* spill from the doorway onto the shop floor — the only cool light in
+     the room, which is what makes it read as an exit */
+  const glowTex = document.createElement("canvas");
+  glowTex.width = glowTex.height = 128;
+  const gc = glowTex.getContext("2d");
+  const rg = gc.createRadialGradient(64, 64, 4, 64, 64, 62);
+  rg.addColorStop(0, "rgba(255,255,255,.55)");
+  rg.addColorStop(.5, "rgba(255,255,255,.16)");
+  rg.addColorStop(1, "rgba(255,255,255,0)");
+  gc.fillStyle = rg; gc.fillRect(0, 0, 128, 128);
+  const halo = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.7, 0.9),
+    new THREE.MeshBasicMaterial({
+      map: new THREE.CanvasTexture(glowTex), color: 0x5A93E0,
+      transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false
+    })
+  );
+  halo.position.set(0, H + 0.14, 0.09);
+  g.add(halo);
+
+  const doorLight = new THREE.PointLight(0x6FA8FF, 2.0, 4.5, 2);
+  doorLight.position.set(0, 0.62, 0.62);
+  g.add(doorLight);
+
+  scene.add(g);
+}
+
 function buildDust(){
   /* confined to the spotlight's cone so it reads as dust in the beam,
      not as a starfield behind the scene */
@@ -1814,6 +1925,21 @@ function positionOverlay(){
     cd.btn.dataset.inert = String(hidden);
     cd.btn.tabIndex = hidden ? -1 : 0;
   });
+
+  /* the doorway sign carries its own link */
+  if (doorSign){
+    doorSign.getWorldPosition(proj);
+    projUp.copy(proj).addScaledVector(camUp, 0.125);
+    proj.project(camera); projUp.project(camera);
+    const dx = (proj.x * 0.5 + 0.5) * W, dy = (-proj.y * 0.5 + 0.5) * H;
+    const dh = Math.max(16, Math.abs((-projUp.y * 0.5 + 0.5) * H - dy));
+    const dw = dh * 3.2;
+    doorLink.style.width = dw + "px";
+    doorLink.style.height = (dh * 2.1) + "px";
+    doorLink.style.transform =
+      "translate(" + (dx - dw / 2).toFixed(1) + "px," + (dy - dh * 1.05).toFixed(1) + "px)";
+    doorLink.style.display = proj.z > 1 ? "none" : "block";
+  }
 
   /* the typed card overlay tracks the risen card */
   if (anyCard){
@@ -2081,6 +2207,21 @@ function returnToCrate(viaHistory){
     state.pushedHistory = false;
   }
 }
+
+/* -------------------- moving between rooms -------------------- */
+const doorLink = document.getElementById("door-link");
+
+function leaveTo(href){
+  document.body.classList.add("leaving");
+  setTimeout(() => { location.href = href; }, REDUCE ? 0 : 380);
+}
+document.querySelectorAll('a[href="/arcade"]').forEach(a => {
+  a.addEventListener("click", e => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;  // let new-tab work
+    e.preventDefault();
+    leaveTo("/arcade");
+  });
+});
 
 /* -------------------- the card catalog -------------------- */
 const cardnote = document.getElementById("cardnote");

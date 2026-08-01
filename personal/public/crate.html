@@ -726,7 +726,10 @@ function drawSleeveFront(ctx, r, i, img){
     const max = S * .46;
     const sc = Math.min(max / img.width, max / img.height);
     const lw = img.width * sc, lh = img.height * sc;
-    ctx.drawImage(img, (S - lw) / 2, S * .30 - lh / 2, lw, lh);
+    /* Sits in the gap between the top rule and the title block, whose midpoint
+       is around 0.40. Override per record with `artY` (0 = top, 1 = bottom). */
+    const cy = S * (r.artY != null ? r.artY : .40);
+    ctx.drawImage(img, (S - lw) / 2, cy - lh / 2, lw, lh);
 
   } else if (img && r.artStyle === "label"){
     /* A logo drawn straight onto the dark board disappears when its artwork is

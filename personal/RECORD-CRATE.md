@@ -95,6 +95,9 @@ If a logo disappears into the sleeve you want `label`; if it looks like a floati
 block you want `emblem`. Omit `art` entirely and the record keeps its procedural groove
 cover; all four treatments sit together fine.
 
+- **Nudging an emblem up or down:** add `artY` to the record — `0` is the top of the
+  sleeve, `1` the bottom. It defaults to `0.40`, which sits in the gap between the top
+  rule and the title block. Only applies to `artStyle: "emblem"`.
 - **Square images look best in `cover`.** The sleeve is 1:1; anything else is centre-cropped.
 - **`label` handles any aspect ratio** — the plaque sizes itself to the logo.
 - **SVG works** and stays crisp, since it's rasterised at draw size. `commit-the-change.svg` is one.

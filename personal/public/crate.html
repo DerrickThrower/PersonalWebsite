@@ -496,8 +496,8 @@ const RECORDS = [
     cat: "DT-005",
     title: "ICS Project Director",
     org: "FUSION at UCI",
-    art: "crate-art/fusion-uci.jpg",
-    artStyle: "label",
+    art: "crate-art/fusion-uci.svg",
+    artStyle: "emblem",
     kind: "Student leadership",
     dates: "May 2026 – Present",
     location: "Irvine, CA",
@@ -719,7 +719,16 @@ function drawSleeveFront(ctx, r, i, img){
   g.addColorStop(0, "#1B1A1F"); g.addColorStop(.55, "#151519"); g.addColorStop(1, "#0F0F12");
   ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
 
-  if (img && r.artStyle === "label"){
+  if (img && r.artStyle === "emblem"){
+    /* A light logo on transparency needs no plaque — it reads straight off the
+       dark board, which keeps the sleeve in the palette instead of punching a
+       bright rectangle through it. */
+    const max = S * .46;
+    const sc = Math.min(max / img.width, max / img.height);
+    const lw = img.width * sc, lh = img.height * sc;
+    ctx.drawImage(img, (S - lw) / 2, S * .30 - lh / 2, lw, lh);
+
+  } else if (img && r.artStyle === "label"){
     /* A logo drawn straight onto the dark board disappears when its artwork is
        dark or sits on transparency (black wordmarks, dark-on-clear PNGs). So it
        gets a printed label instead — the logo letterboxed on a cream plaque,

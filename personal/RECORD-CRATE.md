@@ -82,16 +82,18 @@ Drop an image in `public/crate-art/` and point the record at it:
 }
 ```
 
-**Two styles, because logos and images need different treatment:**
+**Three styles, because logos and images need different treatment:**
 
 | `artStyle` | What it does | Use it for |
 |---|---|---|
 | `"cover"` *(default)* | Fills the sleeve, centre-cropped, then scrimmed dark — a top gradient so the catalogue number reads, a heavier bottom one for the org name | Photos, and square brand tiles that already have their own background |
-| `"label"` | Letterboxes the logo on a cream plaque in the upper third, like a printed label stuck to the sleeve | Logos — especially dark wordmarks or anything on transparency, which would vanish against the dark board |
+| `"emblem"` | Logo centred on the bare dark board, no backing | **Light** logos on transparency. Best-looking option when it applies — nothing punches a bright rectangle through the sleeve |
+| `"label"` | Letterboxes the logo on a cream plaque in the upper third, like a printed label stuck to the sleeve | **Dark** logos, dark wordmarks, or anything whose own background would look wrong on the board |
 
-If a logo disappears or looks like a floating white block, you've got the wrong one of
-the two. Omit `art` entirely and the record keeps its procedural groove cover; all three
-styles sit together fine.
+Rule of thumb: light artwork → `emblem`, dark artwork → `label`, has-its-own-background → `cover`.
+If a logo disappears into the sleeve you want `label`; if it looks like a floating white
+block you want `emblem`. Omit `art` entirely and the record keeps its procedural groove
+cover; all four treatments sit together fine.
 
 - **Square images look best in `cover`.** The sleeve is 1:1; anything else is centre-cropped.
 - **`label` handles any aspect ratio** — the plaque sizes itself to the logo.

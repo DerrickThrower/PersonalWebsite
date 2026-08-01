@@ -427,8 +427,8 @@ body.fallback .rec-stack{
   <nav class="top-nav" aria-label="Site">
     <button class="navbtn" id="btn-about"   aria-expanded="false" aria-controls="sheet-about">About</button>
     <button class="navbtn" id="btn-contact" aria-expanded="false" aria-controls="sheet-contact">Contact</button>
-    <a class="navbtn arcade-link" href="/arcade">Arcade &#8594;</a>
   </nav>
+  <nav id="roomnav" aria-label="Rooms"></nav>
 </header>
 
 <!-- ============ 3D stage ============ -->
@@ -454,7 +454,7 @@ body.fallback .rec-stack{
 <!-- ============ liner notes overlay (visual mirror of the focused <li>) ============ -->
 <div id="liner" aria-hidden="true"></div>
 <div id="cardnote" aria-hidden="true"></div>
-<a id="door-link" href="/arcade"><span class="sr">Enter the arcade</span></a>
+<a id="door-link" href="/arcade" data-room-link><span class="sr">Enter the arcade</span></a>
 
 <!-- ============ footer caption + hint ============ -->
 <div id="footline">
@@ -485,6 +485,7 @@ body.fallback .rec-stack{
 </section>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/room-nav.js"></script>
 <script>
 /* ==========================================================================
    THE RECORD CRATE

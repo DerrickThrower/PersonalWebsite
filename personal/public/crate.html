@@ -262,6 +262,12 @@ body.pulled #pullbar{ opacity:1; visibility:visible; }
   color:var(--accent); margin:0 0 1rem; font-weight:400;
 }
 .sheet p{ font-family:var(--body); font-size:1rem; line-height:1.65; color:#D8D7D0; margin:0 0 1rem; }
+.sheet .mugshot{
+  float:left; width:76px; height:76px; margin:.15rem 1rem .4rem 0;
+  border-radius:2px; object-fit:cover;
+  border:1px solid rgba(200,162,75,.28);
+  filter:grayscale(.35) contrast(1.04);
+}
 .sheet p:last-child{ margin-bottom:0; }
 .sheet ul{ list-style:none; margin:0; padding:0; display:grid; gap:.55rem; }
 .sheet ul a{
@@ -402,6 +408,7 @@ body.fallback .rec-stack{
 <!-- ============ sheets ============ -->
 <section class="sheet" id="sheet-about" data-open="false" aria-labelledby="about-h">
   <h2 id="about-h">About the label</h2>
+  <img class="mugshot" src="crate-art/derrick.jpg" width="96" height="96" alt="Derrick Thrower" />
   <p>First-generation Computer Science student at UC Irvine who builds software that helps people — from a course planner used by half the campus to multi-agent AI systems.</p>
   <p>Off the clock: hackathons, basketball, and new tech.</p>
 </section>
@@ -437,6 +444,8 @@ const RECORDS = [
     cat: "DT-001",
     title: "Software Engineer Intern",
     org: "HireBuddy",
+    art: "crate-art/hirebuddy.png",
+    artStyle: "label",
     kind: "Internship",
     dates: "Jun 2026 – Present",
     location: "San Francisco Bay Area",
@@ -448,6 +457,8 @@ const RECORDS = [
     cat: "DT-002",
     title: "Technical Lead",
     org: "Commit the Change · UCI",
+    art: "crate-art/commit-the-change.svg",
+    artStyle: "label",
     kind: "Student org · nonprofit tech",
     dates: "Jun 2026 – Present",
     location: "Irvine, CA",
@@ -459,6 +470,8 @@ const RECORDS = [
     cat: "DT-003",
     title: "Full Stack Developer",
     org: "Commit the Change · UCI",
+    art: "crate-art/commit-the-change.svg",
+    artStyle: "label",
     kind: "Student org · nonprofit tech",
     dates: "Oct 2025 – Jun 2026",
     location: "Irvine, CA",
@@ -470,6 +483,8 @@ const RECORDS = [
     cat: "DT-004",
     title: "Software Developer",
     org: "AntAlmanac · UCI ICS Student Council",
+    art: "crate-art/antalmanac.png",
+    artStyle: "cover",
     kind: "Open-source · student tooling",
     dates: "Nov 2025 – Present",
     location: "Irvine, CA",
@@ -481,6 +496,8 @@ const RECORDS = [
     cat: "DT-005",
     title: "ICS Project Director",
     org: "FUSION at UCI",
+    art: "crate-art/fusion-uci.jpg",
+    artStyle: "label",
     kind: "Student leadership",
     dates: "May 2026 – Present",
     location: "Irvine, CA",
@@ -492,6 +509,8 @@ const RECORDS = [
     cat: "DT-006",
     title: "Operations",
     org: "Stealth Startup",
+    art: "crate-art/tabula-rasa.jpg",
+    artStyle: "cover",
     kind: "Part-time",
     dates: "Jul 2026 – Present",
     location: "San Francisco Bay Area",
@@ -700,7 +719,29 @@ function drawSleeveFront(ctx, r, i, img){
   g.addColorStop(0, "#1B1A1F"); g.addColorStop(.55, "#151519"); g.addColorStop(1, "#0F0F12");
   ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
 
-  if (img){
+  if (img && r.artStyle === "label"){
+    /* A logo drawn straight onto the dark board disappears when its artwork is
+       dark or sits on transparency (black wordmarks, dark-on-clear PNGs). So it
+       gets a printed label instead — the logo letterboxed on a cream plaque,
+       which is a real sleeve idiom and works for any logo background. */
+    const maxW = S * .60, maxH = S * .22;
+    const sc = Math.min(maxW / img.width, maxH / img.height);
+    const lw = img.width * sc, lh = img.height * sc;
+    const padX = S * .05, padY = S * .045;
+    const pw = lw + padX * 2, ph = lh + padY * 2;
+    const px = (S - pw) / 2, py = S * .19;
+
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,.6)"; ctx.shadowBlur = 28; ctx.shadowOffsetY = 9;
+    const pg = ctx.createLinearGradient(px, py, px, py + ph);
+    pg.addColorStop(0, "#F3F1EA"); pg.addColorStop(1, "#DEDBD1");
+    ctx.fillStyle = pg;
+    roundRect(ctx, px, py, pw, ph, 3); ctx.fill();
+    ctx.restore();
+
+    ctx.drawImage(img, px + padX, py + padY, lw, lh);
+
+  } else if (img){
     /* photo cover: fill the sleeve, then scrim it back so the type still reads
        and the cover stays inside the palette instead of glowing out of it */
     const sc = Math.max(S / img.width, S / img.height);
@@ -719,6 +760,7 @@ function drawSleeveFront(ctx, r, i, img){
     bot.addColorStop(.55, "rgba(8,8,10,.78)");
     bot.addColorStop(1, "rgba(8,8,10,.94)");
     ctx.fillStyle = bot; ctx.fillRect(0, S * .40, S, S * .60);
+
   } else {
     /* generative groove motif — concentric rings, position walks per record */
     const ang = (i / Math.max(1, RECORDS.length)) * Math.PI * 2;

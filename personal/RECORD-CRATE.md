@@ -68,24 +68,34 @@ Add, remove, or reorder freely — the 3D crate, the caption, the accessible lis
 non-WebGL fallback and the liner-notes panel are all built from this one array. Nothing
 else needs to change.
 
-### Putting a photo on a sleeve
+### Sleeve art
 
-Drop an image in `public/crate-art/` and add an `art` field to the record:
+Drop an image in `public/crate-art/` and point the record at it:
 
 ```js
 {
   cat: "DT-004",
   org: "AntAlmanac · UCI ICS Student Council",
-  art: "crate-art/antalmanac.png",   // ← relative path, see note below
+  art: "crate-art/antalmanac.png",   // ← relative path, see notes below
+  artStyle: "cover",                 // "cover" (default) or "label"
   ...
 }
 ```
 
-The photo fills the sleeve and gets scrimmed dark automatically — a top gradient so
-the catalogue number reads, a heavier bottom one so the org name does. Omit `art` and
-the record keeps its procedural groove cover; the two styles sit together fine.
+**Two styles, because logos and images need different treatment:**
 
-- **Square images look best.** The sleeve is 1:1; anything else is centre-cropped to fill.
+| `artStyle` | What it does | Use it for |
+|---|---|---|
+| `"cover"` *(default)* | Fills the sleeve, centre-cropped, then scrimmed dark — a top gradient so the catalogue number reads, a heavier bottom one for the org name | Photos, and square brand tiles that already have their own background |
+| `"label"` | Letterboxes the logo on a cream plaque in the upper third, like a printed label stuck to the sleeve | Logos — especially dark wordmarks or anything on transparency, which would vanish against the dark board |
+
+If a logo disappears or looks like a floating white block, you've got the wrong one of
+the two. Omit `art` entirely and the record keeps its procedural groove cover; all three
+styles sit together fine.
+
+- **Square images look best in `cover`.** The sleeve is 1:1; anything else is centre-cropped.
+- **`label` handles any aspect ratio** — the plaque sizes itself to the logo.
+- **SVG works** and stays crisp, since it's rasterised at draw size. `commit-the-change.svg` is one.
 - **Keep the path relative** (`crate-art/…`, no leading slash). It then resolves correctly
   at `/`, at `/crate.html`, and when the file is opened straight off disk.
 - **Same-origin only.** Files under `public/` are fine. A photo hotlinked from another
@@ -95,6 +105,11 @@ the record keeps its procedural groove cover; the two styles sit together fine.
 - Dark, low-contrast images sit best in the palette. A bright, saturated logo will pop
   out of the moody grade; raise the `rgba(14,14,16,.40)` scrim in `drawSleeveFront` if
   you want to push one back.
+
+### The headshot
+
+`public/crate-art/derrick.jpg`, shown in the About sheet. Swap the file to change it —
+it's a plain `<img class="mugshot">` in the markup, not canvas art.
 
 ### The hackathon record
 

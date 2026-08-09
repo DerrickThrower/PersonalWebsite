@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Cloud Chamber — Derrick Thrower</title>
+<meta name="description" content="Supersaturated vapour lit from the side. Every line is a particle that actually went through." />
+<meta name="color-scheme" content="dark" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#05070B; --ink:#E8EEF4; --muted:#68788C; --accent:#9FD8FF;
+  --display:"Space Grotesk",Arial,sans-serif;
+  --body:"Newsreader",Georgia,serif;
+  --mono:"Space Mono",ui-monospace,Menlo,monospace;
+  --pad:clamp(16px,3.2vw,34px);
+}
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--mono);
+  overflow:hidden; overscroll-behavior:none; -webkit-font-smoothing:antialiased; }
+body.fallback{ overflow:auto; }
+.sr{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
+  clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; }
+
+#stage{ position:fixed; inset:0; }
+body.fallback #stage{ display:none; }
+#gl{ display:block; width:100%; height:100%; touch-action:none; }
+
+#vignette{ position:fixed; inset:0; z-index:4; pointer-events:none;
+  background:radial-gradient(115% 88% at 50% 46%, rgba(0,0,0,0) 30%, rgba(0,0,0,.60) 72%, rgba(0,0,0,.96) 100%); }
+#grain{ position:fixed; inset:-50%; z-index:5; pointer-events:none; opacity:.045;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>"); }
+#curtain{ position:fixed; inset:0; z-index:60; background:#000; pointer-events:none;
+  opacity:1; transition:opacity 900ms ease 100ms; }
+body.lit #curtain{ opacity:0; }
+body.leaving #curtain{ opacity:1; transition:opacity 400ms ease; }
+
+#topbar{ position:fixed; z-index:20; inset:0 0 auto 0; padding:var(--pad);
+  padding-top:max(var(--pad),env(safe-area-inset-top));
+  display:flex; justify-content:space-between; align-items:baseline; gap:1rem; pointer-events:none; }
+#topbar > *{ pointer-events:auto; }
+.mark{ font-family:var(--display); font-weight:700; font-size:clamp(15px,2.1vw,20px);
+  letter-spacing:.13em; text-transform:uppercase; margin:0; }
+.mark small{ display:block; font-family:var(--mono); font-size:11px; font-weight:400;
+  letter-spacing:.11em; color:var(--muted); text-transform:uppercase; margin-top:.35em; }
+
+/* the legend doubles as the accessible content and the controls */
+#legend{
+  position:fixed; z-index:14; left:50%; transform:translateX(-50%);
+  bottom:max(var(--pad),env(safe-area-inset-bottom));
+  display:flex; gap:.4rem; flex-wrap:wrap; justify-content:center;
+  max-width:min(56rem,94vw); margin:0; padding:0; list-style:none;
+}
+#legend li{ margin:0; }
+.trk-btn{
+  font:inherit; color:var(--muted); cursor:pointer; text-align:left;
+  background:rgba(8,12,18,.72); backdrop-filter:blur(6px);
+  border:1px solid rgba(255,255,255,.10); border-radius:2px;
+  padding:.65em .85em; transition:color 160ms, border-color 160ms;
+}
+.trk-btn:hover,.trk-btn[aria-pressed="true"]{ color:var(--ink); }
+.trk-btn:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
+.trk-btn .t-swatch{ display:inline-block; width:9px; height:9px; margin-right:.6em;
+  border-radius:50%; vertical-align:middle; }
+.trk-btn .t-name{ font-size:11px; letter-spacing:.16em; text-transform:uppercase; }
+.trk-btn .t-full{ display:none; }
+.trk-btn .t-sub{ display:block; font-family:var(--body); font-size:.86rem;
+  color:var(--muted); margin-top:.35em; max-width:15rem; line-height:1.4; }
+
+#readout{
+  position:fixed; z-index:14; left:50%; transform:translateX(-50%);
+  bottom:calc(max(var(--pad),env(safe-area-inset-bottom)) + 7.2rem);
+  width:min(32rem,92vw); text-align:center;
+  opacity:0; visibility:hidden; transition:opacity 220ms ease; pointer-events:none;
+}
+#readout.show{ opacity:1; visibility:visible; }
+#readout .r-title{ font-family:var(--display); font-weight:700; font-size:1.2rem; margin:0 0 .3rem; }
+#readout .r-note{ font-family:var(--body); font-size:1rem; line-height:1.55; color:#BCCBDA; margin:0; }
+
+#count{ position:fixed; z-index:14; right:var(--pad);
+  bottom:calc(max(var(--pad),env(safe-area-inset-bottom)) + .4rem);
+  font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+
+#fallback-note{ display:none; }
+body.fallback #vignette, body.fallback #grain, body.fallback #curtain,
+body.fallback #readout, body.fallback #count{ display:none; }
+body.fallback #topbar{ position:static; }
+body.fallback #fallback-note{ display:block; max-width:56rem; margin:0 auto;
+  padding:1.4rem var(--pad) 0; font-size:11px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--muted); }
+body.fallback #legend{ position:static; transform:none; display:grid; gap:.6rem;
+  max-width:56rem; margin:1rem auto 4rem; padding:0 var(--pad); }
+body.fallback .trk-btn{ width:100%; cursor:default; padding:1.2rem 1.3rem;
+  background:linear-gradient(170deg,#0A0F16,#06090D); }
+body.fallback .trk-btn .t-sub{ max-width:none; }
+body.fallback .trk-btn .t-full{ display:block; font-family:var(--body);
+  color:#BCCBDA; margin-top:.6rem; font-size:1rem; line-height:1.55; }
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{ animation-duration:.001ms !important; transition-duration:.001ms !important; }
+}
+@media (max-width:720px){
+  .trk-btn .t-sub{ display:none; }
+  #readout{ bottom:calc(max(var(--pad),env(safe-area-inset-bottom)) + 4.2rem); }
+}
+</style>
+</head>
+<body>
+
+<header id="topbar">
+  <h1 class="mark">Cloud Chamber<small>Every line is something that went through</small></h1>
+  <nav id="roomnav" aria-label="Rooms"></nav>
+</header>
+
+<div id="stage" aria-hidden="true"><canvas id="gl"></canvas></div>
+<div id="vignette" aria-hidden="true"></div>
+<div id="grain" aria-hidden="true"></div>
+<div id="curtain" aria-hidden="true"></div>
+
+<main>
+  <p id="fallback-note">WebGL unavailable — showing the plain text edition.</p>
+  <h2 class="sr">Particle tracks</h2>
+  <ul id="legend"><!-- built from TRACKS --></ul>
+</main>
+
+<div id="readout" aria-hidden="true"></div>
+<p id="count" aria-hidden="true"></p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/room-nav.js"></script>
+<script src="/room-kit.js"></script>
+<script>
+/* =====================================================================
+   CLOUD CHAMBER
+   Supersaturated vapour, lit hard from one side. A charged particle
+   passing through leaves a trail of condensation that hangs for a second
+   or two and then diffuses.
+
+   Tracks are drawn as clouds of droplets rather than lines — that's what
+   a real track is, and it dodges the fact that WebGL line width is
+   locked to 1px on nearly every platform.
+   ===================================================================== */
+
+const K = window.RoomKit;
+
+const TRACKS = [
+  {
+    id:"muon", name:"Muon", color:0xBFE6FF, sub:"Straight through, barely deflected",
+    note:"Made when a cosmic ray hits the upper atmosphere. About one crosses your thumbnail every minute, and it's heavy enough that almost nothing bends it.",
+    n:160, spread:0.012, life:2.6,
+    path(u, rng){ return [ -3.4 + u*6.8, 1.55 + rng.k1*0.9 + u*rng.k2*0.35, rng.k3*0.7 + u*rng.k4*0.5 ]; }
+  },
+  {
+    id:"electron", name:"Electron", color:0x8FFFC4, sub:"Light, so the field curls it up",
+    note:"Low mass means the magnetic field wins. It spirals inward as it loses energy, which is why the curl tightens toward the end of the track.",
+    n:210, spread:0.010, life:2.9,
+    path(u, rng){
+      const a = u*10.5*rng.dir, r = 1.25*(1-u*0.72);
+      return [ rng.cx + Math.cos(a)*r, 1.5 + rng.cy + Math.sin(a)*r*0.62, rng.cz + u*0.5 ];
+    }
+  },
+  {
+    id:"alpha", name:"Alpha", color:0xFFC98A, sub:"Short, thick, stops dead",
+    note:"A helium nucleus — two protons, two neutrons. It ionises so heavily that it dumps all its energy in a few centimetres and simply stops.",
+    n:190, spread:0.030, life:2.2,
+    path(u, rng){
+      const L = 1.5;
+      return [ rng.cx + u*L*rng.dx, 1.5 + rng.cy + u*L*rng.dy*0.5, rng.cz + u*L*rng.dz*0.6 ];
+    }
+  },
+  {
+    id:"decay", name:"Decay", color:0xFF9FB4, sub:"One track in, two out",
+    note:"A particle comes to rest and turns into something else. The fork is the giveaway — momentum has to balance, so the daughters leave in opposite directions.",
+    n:200, spread:0.014, life:3.0,
+    path(u, rng){
+      if (u < 0.45){
+        const v = u/0.45;
+        return [ rng.cx - 1.7 + v*1.7, 1.5 + rng.cy + v*0.30, rng.cz ];
+      }
+      const v = (u-0.45)/0.55;
+      const branch = (Math.floor(u*97) % 2) ? 1 : -1;
+      return [ rng.cx + v*1.5, 1.5 + rng.cy + 0.30 + v*0.75*branch, rng.cz + v*0.35*branch ];
+    }
+  }
+];
+
+const legendEl = document.getElementById("legend");
+const readout = document.getElementById("readout");
+const countEl = document.getElementById("count");
+const tBtns = [];
+
+TRACKS.forEach((t, i) => {
+  const li = document.createElement("li");
+  const b = document.createElement("button");
+  b.className = "trk-btn"; b.type = "button"; b.dataset.i = String(i);
+  b.setAttribute("aria-pressed", "false");
+  /* the long description is the button's accessible name, so screen readers
+     get it without the legend having to print it on screen */
+  b.setAttribute("aria-label", t.name + ". " + t.sub + ". " + t.note);
+  const hex = "#" + t.color.toString(16).padStart(6,"0");
+  b.innerHTML = '<span class="t-swatch"></span><span class="t-name"></span>' +
+                '<span class="t-sub"></span><span class="t-full"></span>';
+  b.querySelector(".t-swatch").style.background = hex;
+  b.querySelector(".t-name").textContent = t.name;
+  b.querySelector(".t-sub").textContent = t.sub;
+  b.querySelector(".t-full").textContent = t.note;
+  li.appendChild(b); legendEl.appendChild(li); tBtns.push(b);
+});
+
+let renderer, scene, camera, clock, pool = [], vaporGeo, total = 0;
+const MAX_TRACKS = 14;
+
+function rng(){
+  return { k1:(Math.random()-.5), k2:(Math.random()-.5), k3:(Math.random()-.5), k4:(Math.random()-.5),
+    cx:(Math.random()-.5)*3.4, cy:(Math.random()-.5)*1.1, cz:(Math.random()-.5)*1.4,
+    dir:Math.random()<.5?1:-1, dx:(Math.random()-.5)*2, dy:(Math.random()-.5)*2, dz:(Math.random()-.5)*2 };
+}
+
+function init(){
+  renderer = K.makeRenderer(document.getElementById("gl"), { exposure: 1.0 });
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x05070B);
+  scene.fog = new THREE.Fog(0x05070B, 7, 20);
+  camera = new THREE.PerspectiveCamera(44, innerWidth/innerHeight, 0.1, 60);
+  clock = new THREE.Clock();
+
+  scene.add(new THREE.AmbientLight(0x141C28, 0.8));
+  /* hard raking light from the left, the way a real chamber is lit so the
+     droplets scatter toward the camera and everything else stays black */
+  const rake = new THREE.SpotLight(0xDCEBFF, 12, 16, Math.PI*0.30, 0.8, 1.6);
+  rake.position.set(-6.2, 3.2, 2.2);
+  rake.target.position.set(0.5, 1.4, 0);
+  scene.add(rake, rake.target);
+  const fill = new THREE.PointLight(0x3E5F8A, 1.6, 14, 2);
+  fill.position.set(4.5, 2.0, 3.0);
+  scene.add(fill);
+
+  buildChamber(); buildVapor(); buildPool();
+  K.linearize(scene);
+  layout();
+  addEventListener("resize", layout, { passive:true });
+  document.body.classList.add("lit");
+  renderer.setAnimationLoop(tick);
+  for (let i = 0; i < 4; i++) spawn(i % TRACKS.length);
+}
+
+function buildChamber(){
+  const steel = new THREE.MeshStandardMaterial({ color:0x1A2029, roughness:0.45, metalness:0.7 });
+  const base = new THREE.Mesh(new THREE.BoxGeometry(8.2, 0.34, 4.4), steel);
+  base.position.set(0, 0.17, 0); scene.add(base);
+  const plate = new THREE.Mesh(new THREE.BoxGeometry(7.6, 0.05, 3.9),
+    new THREE.MeshStandardMaterial({ color:0x090C11, roughness:0.25, metalness:0.6 }));
+  plate.position.set(0, 0.36, 0); scene.add(plate);
+
+  /* glass walls: barely there, just enough to read as a box */
+  const glass = new THREE.MeshStandardMaterial({ color:0x8FB6D8, roughness:0.08, metalness:0.1,
+    transparent:true, opacity:0.055, side:THREE.DoubleSide });
+  const wallGeo = [[7.6,2.6,0,0,-1.95],[7.6,2.6,0,0,1.95]];
+  wallGeo.forEach(w => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w[0],w[1]), glass);
+    m.position.set(w[2], 1.68, w[4]); scene.add(m);
+  });
+  for (const s of [-1,1]){
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(3.9,2.6), glass);
+    m.rotation.y = Math.PI/2; m.position.set(s*3.8, 1.68, 0); scene.add(m);
+  }
+  /* frame edges */
+  const edge = new THREE.MeshStandardMaterial({ color:0x2C3542, roughness:0.4, metalness:0.75 });
+  for (const s of [-1,1]) for (const z of [-1,1]){
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.06,2.6,0.06), edge);
+    post.position.set(s*3.8, 1.68, z*1.95); scene.add(post);
+  }
+}
+
+/* the vapour itself — a slab of slow motes so the light has something to sit in */
+function buildVapor(){
+  const N = 700, pos = new Float32Array(N*3);
+  for (let i = 0; i < N; i++){
+    pos[i*3]   = (Math.random()-.5)*7.4;
+    pos[i*3+1] = 0.45 + Math.random()*2.4;
+    pos[i*3+2] = (Math.random()-.5)*3.7;
+  }
+  vaporGeo = new THREE.BufferGeometry();
+  vaporGeo.setAttribute("position", new THREE.BufferAttribute(pos,3));
+  scene.add(new THREE.Points(vaporGeo, new THREE.PointsMaterial({
+    color:0x7E9BC0, size:0.020, sizeAttenuation:true, transparent:true,
+    opacity:0.14, depthWrite:false, blending:THREE.AdditiveBlending })));
+}
+
+/* a fixed pool of track objects, recycled — no per-event allocation */
+function buildPool(){
+  for (let i = 0; i < MAX_TRACKS; i++){
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(220*3), 3));
+    const mat = new THREE.PointsMaterial({ size:0.032, sizeAttenuation:true,
+      transparent:true, opacity:0, depthWrite:false, blending:THREE.AdditiveBlending });
+    const pts = new THREE.Points(geo, mat);
+    pts.frustumCulled = false;
+    pts.visible = false;
+    scene.add(pts);
+    pool.push({ pts, geo, mat, age:0, life:0, active:false, count:0 });
+  }
+}
+
+function spawn(typeIndex){
+  const t = TRACKS[typeIndex];
+  let slot = pool.find(p => !p.active);
+  if (!slot){                                    // recycle the oldest
+    slot = pool.reduce((a,b) => (a.age/a.life > b.age/b.life ? a : b));
+  }
+  const r = rng();
+  const arr = slot.geo.attributes.position.array;
+  const n = Math.min(t.n, 220);
+  for (let i = 0; i < n; i++){
+    const u = i/(n-1);
+    const p = t.path(u, r);
+    arr[i*3]   = p[0] + (Math.random()-.5)*t.spread*6;
+    arr[i*3+1] = p[1] + (Math.random()-.5)*t.spread*6;
+    arr[i*3+2] = p[2] + (Math.random()-.5)*t.spread*6;
+  }
+  /* unused slots collapse to a point behind the camera rather than at origin */
+  for (let i = n; i < 220; i++){ arr[i*3]=0; arr[i*3+1]=-99; arr[i*3+2]=0; }
+  slot.geo.attributes.position.needsUpdate = true;
+  slot.geo.setDrawRange(0, n);
+  slot.mat.color.setHex(t.color);
+  slot.mat.color.convertSRGBToLinear();
+  slot.count = n;
+  slot.age = 0; slot.life = t.life; slot.active = true;
+  slot.pts.visible = true;
+  total++;
+  countEl.textContent = total + " events";
+}
+
+let camBase = new THREE.Vector3(), camLook = new THREE.Vector3();
+const look = { x:0, y:0, tx:0, ty:0 };
+
+function layout(){
+  renderer.setSize(innerWidth, innerHeight, false);
+  const aspect = innerWidth/Math.max(1,innerHeight);
+  camera.aspect = aspect; camera.updateProjectionMatrix();
+  const d = 6.4 * Math.min(1.7, Math.max(1, 1.15/aspect));
+  camBase.set(0, 2.15, d);
+  camLook.set(0, 1.45, 0);
+  camera.position.copy(camBase); camera.lookAt(camLook);
+  scene.fog.near = d*0.7; scene.fog.far = d*3.2;
+}
+
+let elapsed = 0, nextEvent = 0;
+
+function tick(){
+  const dt = Math.min(0.05, clock.getDelta());
+  elapsed += dt;
+  const R = K.reduced;
+
+  /* cosmic rays arrive on their own schedule; under reduced motion the
+     chamber holds whatever is already on screen instead of flashing */
+  if (!R){
+    nextEvent -= dt;
+    if (nextEvent <= 0){
+      nextEvent = 0.5 + Math.random()*1.4;
+      spawn(Math.floor(Math.random()*TRACKS.length));
+    }
+  }
+
+  pool.forEach(p => {
+    if (!p.active) return;
+    p.age += dt;
+    const u = p.age / p.life;
+    if (u >= 1){ p.active = false; p.pts.visible = false; p.mat.opacity = 0; return; }
+    /* sharp on arrival, then diffuses: the droplets swell and fade */
+    const fadeIn = Math.min(1, u/0.06);
+    p.mat.opacity = R ? 0.85 : fadeIn * Math.pow(1-u, 1.7) * 0.95;
+    p.mat.size = 0.030 + u*0.045;
+  });
+
+  if (!R){
+    const v = vaporGeo.attributes.position.array;
+    for (let i = 0; i < v.length; i += 3){
+      v[i+1] -= dt*0.045;                        // vapour settles
+      v[i]   += Math.sin(elapsed*0.3 + i)*dt*0.012;
+      if (v[i+1] < 0.42) v[i+1] = 2.85;
+    }
+    vaporGeo.attributes.position.needsUpdate = true;
+
+    look.x += (look.tx-look.x)*(1-Math.exp(-2.0*dt));
+    look.y += (look.ty-look.y)*(1-Math.exp(-2.0*dt));
+    camera.position.set(camBase.x + look.x*0.62, camBase.y + look.y*0.26, camBase.z);
+    camera.lookAt(camLook.x + look.x*0.22, camLook.y + look.y*0.10, camLook.z);
+  }
+
+  renderer.render(scene, camera);
+}
+
+tBtns.forEach((b,i) => {
+  const show = () => {
+    readout.innerHTML = "";
+    const t = document.createElement("p"); t.className="r-title"; t.textContent = TRACKS[i].name;
+    const n = document.createElement("p"); n.className="r-note"; n.textContent = TRACKS[i].note;
+    readout.append(t,n); readout.classList.add("show");
+    tBtns.forEach((o,k) => o.setAttribute("aria-pressed", String(k===i)));
+  };
+  const hide = () => { readout.classList.remove("show"); b.setAttribute("aria-pressed","false"); };
+  b.addEventListener("mouseenter", show);
+  b.addEventListener("mouseleave", hide);
+  b.addEventListener("focus", show);
+  b.addEventListener("blur", hide);
+  b.addEventListener("click", () => { show(); spawn(i); });
+});
+
+addEventListener("pointermove", e => {
+  look.tx = (e.clientX/innerWidth - 0.5)*2;
+  look.ty = (e.clientY/innerHeight - 0.5)*2;
+}, { passive:true });
+
+addEventListener("keydown", e => {
+  if (e.key === "Escape") readout.classList.remove("show");
+});
+
+K.boot(init, () => K.fallback(tBtns));
+</script>
+</body>
+</html>

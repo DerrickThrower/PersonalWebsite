@@ -11,7 +11,6 @@ const nextConfig: NextConfig = {
         { source: "/arcade", destination: "/arcade.html" },
         { source: "/darkroom", destination: "/darkroom.html" },
         { source: "/aquarium", destination: "/aquarium.html" },
-        { source: "/cloud-chamber", destination: "/cloud-chamber.html" },
       ],
       afterFiles: [],
       fallback: [],

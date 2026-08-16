@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Darkroom — Derrick Thrower</title>
-<meta name="description" content="Prints hanging under a safelight. Hover one and it develops." />
+<title>Derrick Thrower</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<meta name="description" content="Derrick Thrower" />
 <meta name="color-scheme" content="dark" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -57,8 +58,6 @@ body.leaving #curtain{ opacity:1; transition:opacity 400ms ease; }
 #caption{ font-family:var(--mono); font-size:clamp(11px,1.5vw,13px); letter-spacing:.18em;
   text-transform:uppercase; margin:0 0 .5rem; color:var(--ink); }
 #caption .undev{ color:var(--muted); }
-#hint{ font-family:var(--mono); font-size:11px; letter-spacing:.13em; text-transform:uppercase;
-  color:var(--muted); margin:0; }
 
 #print-list{ position:fixed; inset:0; z-index:10; margin:0; padding:0; list-style:none; pointer-events:none; }
 #print-list li{ position:absolute; left:0; top:0; }
@@ -78,7 +77,6 @@ body.leaving #curtain{ opacity:1; transition:opacity 400ms ease; }
 #plate .p-title{ font-family:var(--display); font-weight:700; font-size:1.25rem; margin:0 0 .3rem; }
 #plate .p-meta{ font-family:var(--mono); font-size:11px; letter-spacing:.16em;
   text-transform:uppercase; color:var(--accent); margin:0 0 .5rem; }
-#plate .p-note{ font-family:var(--body); font-size:1rem; line-height:1.55; color:#D8C6C4; margin:0; }
 
 #fallback-note{ display:none; }
 body.fallback #safelight, body.fallback #vignette, body.fallback #grain,
@@ -98,7 +96,6 @@ body.fallback .sr{ position:static; width:auto; height:auto; margin:0; overflow:
 body.fallback .pr-title{ display:block; font-family:var(--display); font-weight:700; font-size:1.2rem; }
 body.fallback .pr-meta{ display:block; color:var(--accent); font-size:.75rem;
   letter-spacing:.14em; text-transform:uppercase; margin-top:.3rem; }
-body.fallback .pr-note{ display:block; font-family:var(--body); color:#D8C6C4; margin-top:.5rem; font-size:1rem; }
 
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{ animation-duration:.001ms !important; transition-duration:.001ms !important; }
@@ -108,7 +105,7 @@ body.fallback .pr-note{ display:block; font-family:var(--body); color:#D8C6C4; m
 <body>
 
 <header id="topbar">
-  <h1 class="mark">Darkroom<small>Hover a print and it develops</small></h1>
+  <h1 class="mark">Darkroom</h1>
   <nav id="roomnav" aria-label="Rooms"></nav>
 </header>
 
@@ -128,7 +125,6 @@ body.fallback .pr-note{ display:block; font-family:var(--body); color:#D8C6C4; m
 
 <div id="footline">
   <p id="caption"></p>
-  <p id="hint">hover to develop &middot; click to take it down</p>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -150,29 +146,21 @@ body.fallback .pr-note{ display:block; font-family:var(--body); color:#D8C6C4; m
 
 const PRINTS = [
   { src:"photos/IMG_5012.jpeg", aspect:0.74,
-    title:"Raised by Wolves", meta:"Storefront",
-    note:"Outside the shop, thumbs up." },
+    title:"Raised by Wolves", meta:"Storefront" },
   { src:"photos/2282D286-C0FB-488E-8996-80C8B0117C1B.jpg", aspect:0.75,
-    title:"The Formal", meta:"Group at night",
-    note:"Everyone managed to fit in one frame." },
+    title:"The Formal", meta:"Group at night" },
   { src:"photos/IMG_5157.jpeg", aspect:1.33,
-    title:"Between Sessions", meta:"Three of us",
-    note:"Chairs against the wall, waiting on something." },
+    title:"Between Sessions", meta:"Three of us" },
   { src:"photos/F07FB0B1-F37C-404A-A5E8-A4995D988E00.jpg", aspect:0.75,
-    title:"Flower Clip", meta:"Outdoors",
-    note:"Under the trees, mid-afternoon." },
+    title:"Flower Clip", meta:"Outdoors" },
   { src:"photos/3788BDA3-0EFA-48D3-83D9-E17E716F9B6A.jpg", aspect:0.75,
-    title:"Peach Kendama", meta:"Indoors",
-    note:"The shirt is a wall of Go. The peach is not." },
+    title:"Peach Kendama", meta:"Indoors" },
   { src:"photos/IMG_4695.jpeg", aspect:1.33,
-    title:"3CAT", meta:"Boba",
-    note:"Pure bliss in every sip, per the cup." },
+    title:"3CAT", meta:"Boba" },
   { src:"photos/IMG_4789.jpeg", aspect:0.66,
-    title:"Dog Filter", meta:"Selfie",
-    note:"Submitted without comment." },
+    title:"Dog Filter", meta:"Selfie" },
   { src:"photos/IMG_4744.jpeg", aspect:1.18,
-    title:"Gold Balloons", meta:"Somebody's birthday",
-    note:"Low resolution, high spirits." }
+    title:"Gold Balloons", meta:"Somebody's birthday" }
 ];
 
 /* ---------------- accessible DOM ---------------- */
@@ -184,10 +172,9 @@ PRINTS.forEach((p,i) => {
   b.className="print-btn"; b.type="button"; b.dataset.i=String(i);
   b.setAttribute("aria-expanded","false");
   const sr=document.createElement("span"); sr.className="sr";
-  sr.innerHTML='<span class="pr-title"></span><span class="pr-meta"></span><span class="pr-note"></span>';
+  sr.innerHTML='<span class="pr-title"></span><span class="pr-meta"></span>';
   sr.querySelector(".pr-title").textContent=p.title;
   sr.querySelector(".pr-meta").textContent=p.meta;
-  sr.querySelector(".pr-note").textContent=p.note;
   b.appendChild(sr); li.appendChild(b); listEl.appendChild(li); pBtns.push(b);
 });
 
@@ -472,8 +459,7 @@ function showPlate(i){
   plate.innerHTML="";
   const t=document.createElement("p"); t.className="p-title"; t.textContent=p.title;
   const m=document.createElement("p"); m.className="p-meta"; m.textContent=p.meta;
-  const n=document.createElement("p"); n.className="p-note"; n.textContent=p.note;
-  plate.append(t,m,n);
+  plate.append(t,m);
   plate.classList.add("show");
 }
 

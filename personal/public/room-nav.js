@@ -8,10 +8,10 @@
   "use strict";
 
   var ROOMS = [
-    { href: "/",              label: "Shop",          hint: "Roles and projects" },
-    { href: "/darkroom",      label: "Darkroom",      hint: "Prints under a safelight" },
-    { href: "/arcade",        label: "Arcade",        hint: "Cabinets in the dark" },
-    { href: "/aquarium",      label: "Aquarium",      hint: "Caustics, kelp, jellyfish" }
+    { href: "/",              label: "Shop" },
+    { href: "/darkroom",      label: "Darkroom" },
+    { href: "/arcade",        label: "Arcade" },
+    { href: "/aquarium",      label: "Aquarium" }
   ];
 
   var CSS = [
@@ -55,7 +55,6 @@
       var a = document.createElement("a");
       a.href = r.href;
       a.textContent = r.label;
-      a.title = r.hint;
       if (r.href === here) a.setAttribute("aria-current", "page");
       a.addEventListener("click", function(e){
         /* leave modifier-clicks and middle-clicks alone so new-tab still works */

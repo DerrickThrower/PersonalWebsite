@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Thrower Arcade — Derrick Thrower</title>
-<meta name="description" content="A dark arcade room. Five cabinets running attract mode, lit only by their own screens." />
+<title>Derrick Thrower</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<meta name="description" content="Derrick Thrower" />
 <meta name="color-scheme" content="dark" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -92,8 +93,6 @@ body.leaving #curtain{ opacity:1; transition:opacity 420ms ease; }
   letter-spacing:.18em; text-transform:uppercase; margin:0 0 .5rem;
   transition:color 300ms ease;
 }
-#hint{ font-family:var(--mono); font-size:11px; letter-spacing:.13em;
-  text-transform:uppercase; color:var(--muted); margin:0; }
 
 /* --- cabinet hit targets / accessible list --- */
 #cab-list{
@@ -170,7 +169,6 @@ body.fallback .cab-desc{ display:block; color:var(--muted); margin-top:.4rem; fo
 
 <div id="footline">
   <p id="caption"></p>
-  <p id="hint">drag to look &middot; hover a cabinet</p>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -190,7 +188,6 @@ const CABINETS = [
   {
     name: "PONG",
     year: "1972",
-    desc: "Two paddles and a ball. Where all of this started.",
     color: 0xE8F4FF,
     draw(ctx, w, h, t, S){
       if (S.by === undefined){ S.bx = w/2; S.by = h/2; S.vx = w*0.42; S.vy = h*0.30; }
@@ -220,7 +217,6 @@ const CABINETS = [
   {
     name: "SNAKE",
     year: "1976",
-    desc: "It gets longer. That is the whole problem.",
     color: 0x6BFF9E,
     draw(ctx, w, h, t, S){
       const C = 16, cw = w/C, ch = h/C;
@@ -260,7 +256,6 @@ const CABINETS = [
   {
     name: "BREAKOUT",
     year: "1976",
-    desc: "Bricks, one ball, and no forgiveness.",
     color: 0xFFB347,
     draw(ctx, w, h, t, S){
       const COLS = 9, ROWS = 5, bw = w/COLS, bh = h*0.052;
@@ -294,7 +289,6 @@ const CABINETS = [
   {
     name: "INVADERS",
     year: "1978",
-    desc: "They only ever move in one direction: closer.",
     color: 0x9BFF6B,
     draw(ctx, w, h, t, S){
       const COLS = 7, ROWS = 4;
@@ -323,7 +317,6 @@ const CABINETS = [
   {
     name: "STARFIELD",
     year: "1979",
-    desc: "Vector graphics, no gravity, nowhere to be.",
     color: 0x8AB6FF,
     draw(ctx, w, h, t, S){
       if (!S.stars){
@@ -364,9 +357,8 @@ CABINETS.forEach((cab, i) => {
   b.className = "cab-btn"; b.type = "button"; b.dataset.i = String(i);
   const sr = document.createElement("span");
   sr.className = "sr";
-  sr.innerHTML = '<span class="cab-name"></span><span class="cab-desc"></span>';
+  sr.innerHTML = '<span class="cab-name"></span>';
   sr.querySelector(".cab-name").textContent = cab.name + " (" + cab.year + ")";
-  sr.querySelector(".cab-desc").textContent = cab.desc;
   b.appendChild(sr); li.appendChild(b); listEl.appendChild(li);
   cabBtns.push(b);
 });
@@ -655,10 +647,7 @@ function setCaption(i){
   const a = document.createElement("span");
   a.textContent = c.name + " · " + c.year;
   a.style.color = "#" + c.color.toString(16).padStart(6,"0");
-  const b = document.createElement("span");
-  b.textContent = "  " + c.desc;
-  b.style.color = "var(--muted)";
-  caption.append(a, b);
+  caption.append(a);
 }
 
 /* -------------------- loop -------------------- */

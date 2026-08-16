@@ -9,8 +9,8 @@ const nextConfig: NextConfig = {
       beforeFiles: [
         { source: "/", destination: "/crate.html" },
         { source: "/arcade", destination: "/arcade.html" },
-        { source: "/server", destination: "/server.html" },
         { source: "/darkroom", destination: "/darkroom.html" },
+        { source: "/aquarium", destination: "/aquarium.html" },
       ],
       afterFiles: [],
       fallback: [],

@@ -8,10 +8,10 @@
   "use strict";
 
   var ROOMS = [
-    { href: "/",         label: "Shop",         hint: "Roles and projects" },
-    { href: "/arcade",   label: "Arcade",       hint: "Cabinets in the dark" },
-    { href: "/server",   label: "Machine Room", hint: "How an agent swarm runs" },
-    { href: "/darkroom", label: "Darkroom",     hint: "Prints under a safelight" }
+    { href: "/",              label: "Shop",          hint: "Roles and projects" },
+    { href: "/darkroom",      label: "Darkroom",      hint: "Prints under a safelight" },
+    { href: "/arcade",        label: "Arcade",        hint: "Cabinets in the dark" },
+    { href: "/aquarium",      label: "Aquarium",      hint: "Caustics, kelp, jellyfish" }
   ];
 
   var CSS = [

@@ -5,7 +5,7 @@
    objects. Extracted after building four rooms and copying the same ~150
    lines into each one.
 
-   The older rooms (crate, arcade, server, darkroom) still carry their own
+   The older rooms (crate, server, darkroom) still carry their own
    copies — they work, and rewriting them to use this buys nothing today.
    New rooms should use this.
    ===================================================================== */

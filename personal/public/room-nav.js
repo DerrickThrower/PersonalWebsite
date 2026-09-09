@@ -1,7 +1,6 @@
 /* =====================================================================
    ROOM NAV — shared by every room
-   Four rooms is where in-world doors alone start stranding people, so
-   every page also gets a persistent switcher. Injects its own styles so
+   Every page gets a persistent room switcher. Injects its own styles so
    a room only has to provide <nav id="roomnav"> and this script tag.
    ===================================================================== */
 (function(){
@@ -9,9 +8,7 @@
 
   var ROOMS = [
     { href: "/",              label: "Shop" },
-    { href: "/darkroom",      label: "Darkroom" },
-    { href: "/arcade",        label: "Arcade" },
-    { href: "/aquarium",      label: "Aquarium" }
+    { href: "/darkroom",      label: "Darkroom" }
   ];
 
   var CSS = [
@@ -35,7 +32,7 @@
   }
 
   /* rooms fade through black between each other, so the set feels like one
-     building rather than four unrelated pages */
+     building rather than unrelated pages */
   function leaveTo(href){
     var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     document.body.classList.add("leaving");
